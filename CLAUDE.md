@@ -45,7 +45,7 @@ Integrations, mobile apps, loan tracking, automated leave workflow, analytics, r
 8. Expat flat fees (CDF, heating gas): full amount for part-period starters, or pro-rata? Assumed full.
 
 ## Day plan (tracked)
-- [ ] Mon: scaffold, CLAUDE.md, engine with passing tests
+- [x] Mon: scaffold, CLAUDE.md, engine with passing tests
 - [ ] Tue: Supabase schema, seed, employees, departments, grades
 - [ ] Wed: payroll run, payslip PDF, credit purchases, expat rules
 - [ ] Thu: dashboard, settings page, portal, polish, deploy (Vercel)
