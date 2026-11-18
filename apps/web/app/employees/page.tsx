@@ -16,9 +16,9 @@ type Row = {
 export default async function EmployeesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; category?: string; dept?: string; grade?: string; status?: string }>;
+  searchParams: Promise<{ q?: string; category?: string; dept?: string; grade?: string; status?: string; email?: string }>;
 }) {
-  const { q = '', category = '', dept = '', grade = '', status = '' } = await searchParams;
+  const { q = '', category = '', dept = '', grade = '', status = '', email = '' } = await searchParams;
   const supabase = db();
 
   let query = supabase
@@ -30,7 +30,9 @@ export default async function EmployeesPage({
   if (term) query = query.or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%,employee_no.ilike.%${term}%`);
   if (category) query = query.eq('category', category);
   if (dept) query = query.eq('department_id', dept);
-  if (grade) query = query.eq('pay_grade_id', grade);
+  if (grade === 'none') query = query.is('pay_grade_id', null);
+  else if (grade) query = query.eq('pay_grade_id', grade);
+  if (email === 'none') query = query.is('email', null); // linked from the dashboard
   if (status === 'active') query = query.eq('active', true);
   if (status === 'inactive') query = query.eq('active', false);
 
