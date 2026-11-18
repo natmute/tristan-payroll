@@ -36,6 +36,16 @@ export interface PayrollSettings {
   };
   /** TODO(client): calendar days or working days for starters/leavers? */
   proRataBasis: 'calendar_days' | 'working_days';
+  /**
+   * TODO(client): do tax, pension, community service and medical apply to overtime pay?
+   * Questionnaire says 13% "on all earnings"; the sample sheet only shows salary + allowance.
+   */
+  deductionsApplyToOvertime: boolean;
+  /**
+   * TODO(client): is the 3% transfer commission a fixed rule? Seen in the sample sheet.
+   * Added as its own line after a "transfers" custom deduction. 0 = no commission.
+   */
+  transferCommissionBps: number;
 }
 
 // All of these are editable on the Settings page; none are hard-coded elsewhere.
@@ -70,4 +80,6 @@ export const defaultSettings: PayrollSettings = {
   },
   overtime: { weekdayAndSaturdayBps: 15000, sundayAndHolidayBps: 20000 },
   proRataBasis: 'calendar_days',
+  deductionsApplyToOvertime: true,
+  transferCommissionBps: 300,
 };

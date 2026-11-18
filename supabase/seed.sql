@@ -28,7 +28,7 @@ insert into deduction_types (code, label, sort_order) values
   ('posb',                'POSB',                       30),
   ('island_store',        'Island Store',               40),
   ('pwd_stores',          'PWD Stores',                 50),
-  -- TODO(client): is the 3% transfer commission a fixed rule? Seeded as explicit amounts for now.
+  -- TODO(client): is the 3% transfer commission a fixed rule? The engine adds it (setting transferCommissionBps).
   ('transfers',           'Transfers',                  60),
   ('transfer_commission', 'Transfer commission',        65),
   ('agriculture',         'Agriculture',                70),
@@ -65,7 +65,9 @@ insert into payroll_settings (id, settings) values (1, '{
     }
   },
   "overtime": {"weekdayAndSaturdayBps":15000,"sundayAndHolidayBps":20000},
-  "proRataBasis": "calendar_days"
+  "proRataBasis": "calendar_days",
+  "deductionsApplyToOvertime": true,
+  "transferCommissionBps": 300
 }'::jsonb)
 on conflict (id) do nothing;
 
@@ -92,12 +94,12 @@ from (values
 ) as v(no, first, last, email, cat, dept, grade, title, start, salary, allowance, exempt)
 on conflict (employee_no) do nothing;
 
--- Custom deductions from the sample sheet, in pence. Transfers and their 3% commission are separate lines.
+-- Custom deductions from the sample sheet, in pence. Transfer commission is added by the engine, not stored.
 insert into custom_deductions (employee_id, type_code, amount)
 select e.id, v.type_code, v.amount
 from (values
   ('T001','posb',        1000),
-  ('T001','transfers',   2000), ('T001','transfer_commission',   60),
+  ('T001','transfers',   2000),
 
   ('T002','posb',        4000),
   ('T002','freight',     5000),
@@ -109,13 +111,13 @@ from (values
   ('T004','prescriptions',2000),
   ('T004','posb',       15378),
   ('T004','pwd_stores',  4000),
-  ('T004','transfers',   1000), ('T004','transfer_commission',   30),
+  ('T004','transfers',   1000),
   ('T004','internet',     800),
 
   ('T005','prescriptions', 500),
   ('T005','posb',       11000),
   ('T005','pwd_stores',  3000),
-  ('T005','transfers',   5000), ('T005','transfer_commission',  150),
+  ('T005','transfers',   5000),
   ('T005','agriculture', 3000),
   ('T005','freight',    10000),
 

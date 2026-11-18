@@ -66,16 +66,29 @@ export function calculatePayslip(emp: EmployeeInput, settings: PayrollSettings):
   const deductions: PayLine[] = [];
   let employerPension = 0;
 
+  // Percentage deductions are calculated separately, each on this base.
+  const percentBase = settings.deductionsApplyToOvertime ? totalPay : salary + allowance;
+
   for (const r of rules.percent) {
     if (!r.enabled || (r.exemptable && emp.exemptFromTaxCommunityMedical)) continue;
-    deductions.push({ code: r.code, label: r.label, amount: percentOf(totalPay, r.bps) });
-    if (r.employerBps) employerPension += percentOf(totalPay, r.employerBps);
+    deductions.push({ code: r.code, label: r.label, amount: percentOf(percentBase, r.bps) });
+    if (r.employerBps) employerPension += percentOf(percentBase, r.employerBps);
   }
   for (const f of rules.flat) {
     if (!f.enabled || (f.exemptable && emp.exemptFromTaxCommunityMedical)) continue;
     deductions.push({ code: f.code, label: f.label, amount: f.amount });
   }
-  for (const c of emp.customDeductions) deductions.push({ ...c });
+  for (const c of emp.customDeductions) {
+    deductions.push({ ...c });
+    // Transfers carry a commission, shown as its own line (the ledger keeps it separate).
+    if (c.code === 'transfers' && settings.transferCommissionBps > 0) {
+      deductions.push({
+        code: 'transfer_commission',
+        label: 'Transfer commission',
+        amount: percentOf(c.amount, settings.transferCommissionBps),
+      });
+    }
+  }
 
   const beforeCredit = deductions.reduce((s, d) => s + d.amount, 0);
   const availableForCredit = Math.max(0, totalPay - beforeCredit);
