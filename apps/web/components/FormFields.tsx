@@ -50,11 +50,11 @@ export function SelectField({
   );
 }
 
-export function CheckField({ label, name, id = name, defaultChecked, hint }: { label: string; name: string; id?: string; defaultChecked?: boolean; hint?: string }) {
+export function CheckField({ label, name, id = name, defaultChecked, hint, required }: { label: string; name: string; id?: string; defaultChecked?: boolean; hint?: string; required?: boolean }) {
   return (
     <div className="flex items-start gap-2 text-sm">
       <input
-        id={id} type="checkbox" name={name} defaultChecked={defaultChecked}
+        id={id} type="checkbox" name={name} defaultChecked={defaultChecked} required={required}
         aria-describedby={hint ? `${id}-hint` : undefined} className="mt-0.5 h-4 w-4 rounded border-slate-300"
       />
       <div>

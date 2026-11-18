@@ -15,7 +15,7 @@ type Emp = {
   salary: number; allowance: number; exempt_from_tax_community_medical: boolean;
 };
 type Ded = { employee_id: string; type_code: string; amount: number };
-type Credit = { employee_id: string; amount: number };
+type Credit = { employee_id: string; amount: number; paid: number };
 type Cycle = { category: Category; cycle: 'four_weekly' | 'monthly'; pay_day_of_month: number | null; anchor_pay_date: string | null };
 type Run = { id: string; category: Category; period_start: string; period_end: string; pay_date: string; status: string };
 
@@ -53,7 +53,7 @@ export default async function Dashboard() {
       fetchAll<Ded>((a, b) => supabase.from('custom_deductions')
         .select('employee_id, type_code, amount').eq('active', true).range(a, b).returns<Ded[]>()),
       fetchAll<Credit>((a, b) => supabase.from('credit_purchases')
-        .select('employee_id, amount').eq('settled', false).range(a, b).returns<Credit[]>()),
+        .select('employee_id, amount, paid').eq('settled', false).range(a, b).returns<Credit[]>()),
     ]);
   } catch (e) {
     return <ErrorBox message={(e as Error).message} />;
@@ -75,7 +75,7 @@ export default async function Dashboard() {
   const dedsBy = new Map<string, Ded[]>();
   for (const d of deds) dedsBy.set(d.employee_id, [...(dedsBy.get(d.employee_id) ?? []), d]);
   const creditBy = new Map<string, number>();
-  for (const c of credits) creditBy.set(c.employee_id, (creditBy.get(c.employee_id) ?? 0) + c.amount);
+  for (const c of credits) creditBy.set(c.employee_id, (creditBy.get(c.employee_id) ?? 0) + (c.amount - c.paid));
 
   // Projection: one full pay period per employee, using today's salaries and settings.
   const totals: Record<Category, { employees: number; gross: number; deductions: number; net: number; tax: number }> = {

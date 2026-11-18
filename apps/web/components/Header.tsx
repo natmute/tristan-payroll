@@ -7,6 +7,7 @@ const STAFF_NAV = [
   { href: '/employees', label: 'Employees' },
   { href: '/departments', label: 'Departments' },
   { href: '/grades', label: 'Pay grades' },
+  { href: '/payroll', label: 'Payroll' },
 ];
 
 // Nav items by role. Employees only ever see their own data (portal).

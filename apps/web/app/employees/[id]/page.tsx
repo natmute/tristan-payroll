@@ -18,7 +18,7 @@ type Employee = {
   departments: { name: string; code: string } | null; pay_grades: { code: string; name: string } | null;
 };
 type Deduction = { id: string; type_code: string; amount: number; active: boolean; deduction_types: { label: string; sort_order: number } | null };
-type Credit = { id: string; purchase_date: string; description: string | null; amount: number; settled: boolean };
+type Credit = { id: string; purchase_date: string; description: string | null; amount: number; paid: number; settled: boolean };
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -40,7 +40,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
     supabase.from('custom_deductions')
       .select('id, type_code, amount, active, deduction_types(label, sort_order)').eq('employee_id', id).returns<Deduction[]>(),
     supabase.from('credit_purchases')
-      .select('id, purchase_date, description, amount, settled').eq('employee_id', id).order('purchase_date').returns<Credit[]>(),
+      .select('id, purchase_date, description, amount, paid, settled').eq('employee_id', id).order('purchase_date').returns<Credit[]>(),
     supabase.from('payroll_settings').select('settings').eq('id', 1).single<{ settings: PayrollSettings }>(),
     // Transfer commission is added by the engine, so it is not offered as a manual deduction.
     supabase.from('deduction_types').select('code, label').neq('code', 'transfer_commission').order('sort_order'),
@@ -53,7 +53,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
   const deductions = (deds.data ?? [])
     .filter((d) => d.active)
     .sort((a, b) => (a.deduction_types?.sort_order ?? 0) - (b.deduction_types?.sort_order ?? 0));
-  const creditBalance = (credits.data ?? []).filter((c) => !c.settled).reduce((s, c) => s + c.amount, 0);
+  const creditBalance = (credits.data ?? []).filter((c) => !c.settled).reduce((s, c) => s + (c.amount - c.paid), 0);
 
   // Preview uses the live settings and a full period. Real runs add pro-rata and overtime.
   const preview = settingsRow.data
@@ -161,7 +161,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
                 {credits.data.map((c) => (
                   <tr key={c.id}>
                     <Td>{ukDate(c.purchase_date)}</Td><Td>{c.description}</Td><Td right>{gbp(c.amount)}</Td>
-                    <Td>{c.settled ? <Chip>Settled</Chip> : <Chip tone="amber">Outstanding</Chip>}</Td>
+                    <Td>{c.settled ? <Chip>Settled</Chip> : c.paid > 0 ? <Chip tone="amber">Part paid ({gbp(c.paid)})</Chip> : <Chip tone="amber">Outstanding</Chip>}</Td>
                   </tr>
                 ))}
               </tbody>

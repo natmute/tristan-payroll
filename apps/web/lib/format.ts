@@ -20,6 +20,24 @@ export function ukDate(iso: string | null | undefined): string {
   return `${d} ${MONTHS[m - 1]} ${y}`;
 }
 
+/** +£12.30 or -£4.00. */
+export function signedGbp(pence: number): string {
+  return pence > 0 ? `+${gbp(pence)}` : gbp(pence);
+}
+
+/** Basis points as a signed percentage with up to two decimals: 1234 -> "+12.34%". Integer maths. */
+export function signedPct(bps: number): string {
+  const abs = Math.abs(bps);
+  const frac = String(abs % 100).padStart(2, '0').replace(/0$/, '');
+  return `${bps > 0 ? '+' : bps < 0 ? '-' : ''}${Math.floor(abs / 100)}${frac ? '.' + frac : ''}%`;
+}
+
+/** "2026-11-16" plus 1 day -> "2026-11-17". Calendar maths in UTC. */
+export function addDays(iso: string, days: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
 export const CATEGORY_LABELS: Record<Category, string> = {
   government: 'Government',
   expat_contractor: 'Expats and Contractors',
