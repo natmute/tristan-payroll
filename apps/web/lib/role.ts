@@ -11,6 +11,11 @@ export const ROLE_LABELS: Record<Role, string> = {
   employee: 'Employee',
 };
 
+/** Administrators and payroll officers see staff screens. Employees only get their own portal. */
+export async function isStaff(): Promise<boolean> {
+  return (await currentRole()) !== 'employee';
+}
+
 export async function currentRole(): Promise<Role> {
   const v = (await cookies()).get('demo_role')?.value;
   return ROLES.includes(v as Role) ? (v as Role) : 'admin';
