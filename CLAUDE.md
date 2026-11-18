@@ -102,7 +102,7 @@ The sheet has an "FTN" column that is zero for everyone. What is it? Not modelle
 Ledger labels do not match between the salary sheet and the audit-trail template (for example Freight 150.00 appears as "Internet & TV Licences", Internet 34.00 as "Miscellaneous", and Transfers as "PWD Mechanical"). Only matters if a journal export is added later.
 Day plan (tracked)
 [x] Mon: scaffold, CLAUDE.md, engine with passing tests
-[ ] Tue: Supabase schema, seed, employees, departments, grades
+[x] Tue: Supabase schema, seed, employees, departments, grades
 [ ] Wed: payroll run, payslip PDF, credit purchases, expat rules
 [ ] Thu: dashboard, settings page, portal, polish, deploy (Vercel)
 [ ] Fri: buffer and rehearsal
