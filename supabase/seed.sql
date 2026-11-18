@@ -1,12 +1,40 @@
 -- Prototype seed data. FICTIONAL names only. Run after schema.sql. Safe to re-run.
--- Money is integer pence. Salaries below match the client's sample sheet figures.
+-- Money is integer pence. T001-T007 use the anonymised Telecommunications sample sheet
+-- (pay date 16 Nov 2026) from CLAUDE.md. Do not add real client data here.
 
-insert into departments (name) values
-  ('Administration'), ('Education'), ('Health'), ('Fisheries'), ('Public Works'), ('Agriculture')
-on conflict (name) do nothing;
+-- TODO(client): real department list and codes are awaited. Codes below are fake placeholders.
+insert into departments (code, name, category) values
+  ('DEPT-01',  'Telecommunications',              'government'),
+  ('DEPT-02',  'Placeholder Government Dept B',   'government'),
+  ('DEPT-X1',  'Placeholder Expat Dept',          'expat_contractor')
+on conflict (code) do nothing;
 
+-- Client rules: government paid every 4 weeks, expats and contractors monthly around the 20th.
+insert into category_pay_cycles (category, cycle, pay_day_of_month) values
+  ('government', 'four_weekly', null),
+  ('expat_contractor', 'monthly', 20)
+on conflict (category) do nothing;
+
+-- TODO(client): grade names and scales unknown. Placeholders only.
 insert into pay_grades (code, name) values
   ('G1', 'Grade 1'), ('G2', 'Grade 2'), ('G3', 'Grade 3'), ('G4', 'Grade 4'), ('G5', 'Grade 5'), ('EX', 'Expat / Contractor')
+on conflict (code) do nothing;
+
+-- Deduction types, in the client's payslip line order.
+-- "Prescriptions" is the sheet's "Medical" custom column. It is NOT the 4% medical tax.
+insert into deduction_types (code, label, sort_order) values
+  ('electricity',         'Electricity',                10),
+  ('prescriptions',       'Medical (prescriptions)',    20),
+  ('posb',                'POSB',                       30),
+  ('island_store',        'Island Store',               40),
+  ('pwd_stores',          'PWD Stores',                 50),
+  -- TODO(client): is the 3% transfer commission a fixed rule? Seeded as explicit amounts for now.
+  ('transfers',           'Transfers',                  60),
+  ('transfer_commission', 'Transfer commission',        65),
+  ('agriculture',         'Agriculture',                70),
+  ('misc',                'Miscellaneous',              80),
+  ('freight',             'Freight',                    90),
+  ('internet',            'Internet rental',           100)
 on conflict (code) do nothing;
 
 -- Settings = defaultSettings from packages/payroll-engine/src/settings.ts.
@@ -41,47 +69,77 @@ insert into payroll_settings (id, settings) values (1, '{
 }'::jsonb)
 on conflict (id) do nothing;
 
--- Employees: (no, first, last, category, dept, grade, title, leave tier, start, salary, allowance, exempt)
+-- Employees. T001-T007 = sample sheet rows 1-7 (fictional names). T008 = starter for the pro-rata
+-- demo. X001-X002 = expat/contractor demo rows; their salaries are PLACEHOLDERS, not client figures.
+-- Everyone is on the standard leave tier: the doc does not say who counts as head/deputy/assistant.
 insert into employees
-  (employee_no, first_name, last_name, email, category, department_id, pay_grade_id, job_title, leave_tier, start_date, salary, allowance, exempt_from_tax_community_medical)
+  (employee_no, first_name, last_name, email, category, department_id, pay_grade_id, job_title, start_date, salary, allowance, exempt_from_tax_community_medical)
 select v.no, v.first, v.last, v.email, v.cat,
-       (select id from departments where name = v.dept),
+       (select id from departments where code = v.dept),
        (select id from pay_grades where code = v.grade),
-       v.title, v.tier, v.start::date, v.salary, v.allowance, v.exempt
+       v.title, v.start::date, v.salary, v.allowance, v.exempt
 from (values
-  ('G001','Alice','Harbour','alice.harbour@example.test','government','Administration','G3','Administrator','head_deputy_assistant','2012-03-01',  45402, 4974, false),
-  ('G002','Brian','Settlement','brian.settlement@example.test','government','Public Works','G2','Plant Operator','standard','2018-06-04', 27186, 4974, false),
-  ('G003','Carol','Edinburgh','carol.edinburgh@example.test','government','Health','G5','Head Nurse','head_deputy_assistant','2008-01-14', 84318, 4974, false),
-  ('G004','David','Gough','david.gough@example.test','government','Education','G3','Teacher','standard','2015-09-01', 54758, 4974, false),
-  ('G005','Elena','Nightingale','elena.nightingale@example.test','government','Fisheries','G1','Fisheries Assistant','standard','2021-02-15', 24978, 4974, false),
-  ('G006','Frank','Inaccessible','frank.inaccessible@example.test','government','Agriculture','G2','Farm Hand','standard','2019-05-20', 33396, 0, true),
-  ('G007','Grace','Starter','grace.starter@example.test','government','Administration','G1','Clerk (new starter)','standard','2026-11-09', 27186, 4974, false),
-  ('X001','Henry','Contractor','henry.contractor@example.test','expat_contractor','Public Works','EX','Visiting Engineer','standard','2026-01-05', 350000, 0, false),
-  ('X002','Irene','Expat','irene.expat@example.test','expat_contractor','Education','EX','Visiting Teacher','standard','2026-03-02', 280000, 0, false)
-) as v(no, first, last, email, cat, dept, grade, title, tier, start, salary, allowance, exempt)
+  ('T001','Alice','Marlow',   'alice.marlow@example.test',   'government','DEPT-01','G1','Telecoms Assistant',  '2016-04-04',  33396,    0, true),
+  ('T002','Ben','Whitcombe',  'ben.whitcombe@example.test',  'government','DEPT-01','G1','Telecoms Assistant',  '2021-02-15',  27186, 4974, false),
+  ('T003','Carol','Thorne',   'carol.thorne@example.test',   'government','DEPT-01','G5','Telecoms Supervisor', '2009-01-12',  84318, 4974, false),
+  ('T004','David','Ashby',    'david.ashby@example.test',    'government','DEPT-01','G3','Telecoms Technician', '2014-09-01',  45402, 4974, false),
+  ('T005','Elena','Fairfax',  'elena.fairfax@example.test',  'government','DEPT-01','G4','Telecoms Technician', '2012-06-18',  54758, 4974, false),
+  ('T006','Frank','Hollis',   'frank.hollis@example.test',   'government','DEPT-01','G3','Telecoms Technician', '2018-11-05',  45402, 4974, false),
+  ('T007','Grace','Penhallow','grace.penhallow@example.test','government','DEPT-01','G1','Telecoms Assistant',  '2022-07-11',  24978, 4974, false),
+  ('T008','Harriet','Starling','harriet.starling@example.test','government','DEPT-02','G1','Clerk (new starter)', '2026-11-09',  27186, 4974, false),
+  ('X001','Isaac','Brandt',   'isaac.brandt@example.test',   'expat_contractor','DEPT-X1','EX','Visiting Engineer', '2026-01-05', 350000,    0, false),
+  ('X002','Joanna','Kessler', 'joanna.kessler@example.test', 'expat_contractor','DEPT-X1','EX','Visiting Teacher',  '2026-03-02', 280000,    0, false)
+) as v(no, first, last, email, cat, dept, grade, title, start, salary, allowance, exempt)
 on conflict (employee_no) do nothing;
 
--- Custom per-employee deductions (pence per period).
-insert into custom_deductions (employee_id, code, label, amount)
-select e.id, v.code, v.label, v.amount
+-- Custom deductions from the sample sheet, in pence. Transfers and their 3% commission are separate lines.
+insert into custom_deductions (employee_id, type_code, amount)
+select e.id, v.type_code, v.amount
 from (values
-  ('G001','electricity','Electricity', 1500),
-  ('G001','posb','POSB savings', 2000),
-  ('G002','island_store','Island store', 3000),
-  ('G003','internet','Internet', 2500),
-  ('G004','agriculture','Agriculture', 800)
-) as v(no, code, label, amount)
+  ('T001','posb',        1000),
+  ('T001','transfers',   2000), ('T001','transfer_commission',   60),
+
+  ('T002','posb',        4000),
+  ('T002','freight',     5000),
+
+  ('T003','electricity', 6816),
+  ('T003','prescriptions', 500),
+  ('T003','internet',    1800),
+
+  ('T004','prescriptions',2000),
+  ('T004','posb',       15378),
+  ('T004','pwd_stores',  4000),
+  ('T004','transfers',   1000), ('T004','transfer_commission',   30),
+  ('T004','internet',     800),
+
+  ('T005','prescriptions', 500),
+  ('T005','posb',       11000),
+  ('T005','pwd_stores',  3000),
+  ('T005','transfers',   5000), ('T005','transfer_commission',  150),
+  ('T005','agriculture', 3000),
+  ('T005','freight',    10000),
+
+  ('T006','prescriptions', 500),
+  ('T006','posb',        5000),
+  ('T006','island_store',1500),
+  ('T006','internet',     800),
+
+  ('T007','electricity', 1424),
+  ('T007','prescriptions', 500),
+  ('T007','posb',        5000),
+  ('T007','island_store',1000)
+) as v(no, type_code, amount)
 join employees e on e.employee_no = v.no
 where not exists (
-  select 1 from custom_deductions c where c.employee_id = e.id and c.code = v.code
+  select 1 from custom_deductions c where c.employee_id = e.id and c.type_code = v.type_code
 );
 
--- Credit purchases: unsettled balance is deducted from the next salary.
+-- Credit purchases are on non-sample employees so the sample sheet nets still reconcile.
 insert into credit_purchases (employee_id, purchase_date, description, amount)
 select e.id, v.d::date, v.descr, v.amount
 from (values
-  ('G002','2026-11-02','Island store credit', 4500),
-  ('G005','2026-11-05','Freight charge', 1800)
+  ('T008','2026-11-12','Island store credit', 1800),
+  ('X001','2026-11-05','Freight charge',      4500)
 ) as v(no, d, descr, amount)
 join employees e on e.employee_no = v.no
 where not exists (

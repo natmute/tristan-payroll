@@ -6,8 +6,40 @@
 create extension if not exists "pgcrypto";
 
 create table if not exists departments (
-  id   uuid primary key default gen_random_uuid(),
-  name text not null unique
+  id       uuid primary key default gen_random_uuid(),
+  -- TODO(client): full department list and real department codes are awaited from Paul.
+  -- Codes here are fake placeholders. Do not put real ledger codes in this column.
+  code     text not null unique,
+  name     text not null unique,
+  category text not null check (category in ('government', 'expat_contractor'))
+);
+
+-- Pay cycle per category (editable on the Department management screen).
+create table if not exists category_pay_cycles (
+  category         text primary key check (category in ('government', 'expat_contractor')),
+  cycle            text not null check (cycle in ('four_weekly', 'monthly')),
+  pay_day_of_month int check (pay_day_of_month between 1 and 31)  -- monthly cycles only
+);
+
+-- Each deduction type is its own named item so a ledger code can be attached later.
+-- sort_order follows the client's current payslip line order.
+create table if not exists deduction_types (
+  code        text primary key,
+  label       text not null,
+  sort_order  int not null,
+  ledger_code text  -- TODO(client): accounting journal export is out of scope. Leave empty.
+);
+
+-- Admin actions (settings changes, payroll runs). The prototype logs the role-switcher user.
+create table if not exists audit_log (
+  id         uuid primary key default gen_random_uuid(),
+  at         timestamptz not null default now(),
+  actor_role text not null,
+  actor_name text not null,
+  action     text not null,
+  entity     text,
+  entity_id  text,
+  detail     jsonb
 );
 
 create table if not exists pay_grades (
@@ -28,6 +60,7 @@ create table if not exists employees (
   pay_grade_id    uuid references pay_grades(id),
   job_title       text,
   -- Annual leave tier: 25 days for heads of department, deputies and assistants.
+  -- 15 days (21 after 5 years) is worked out from start_date by the app.
   leave_tier      text not null default 'standard' check (leave_tier in ('standard', 'head_deputy_assistant')),
   start_date      date not null,
   end_date        date,                              -- leavers
@@ -43,8 +76,7 @@ create table if not exists employees (
 create table if not exists custom_deductions (
   id          uuid primary key default gen_random_uuid(),
   employee_id uuid not null references employees(id) on delete cascade,
-  code        text not null,
-  label       text not null,
+  type_code   text not null references deduction_types(code),
   amount      bigint not null check (amount >= 0),   -- pence per period
   active      boolean not null default true
 );
@@ -95,6 +127,9 @@ create index if not exists payslips_employee_idx on payslips(employee_id);
 -- The server uses the service role key, which bypasses RLS.
 -- TODO(full build): add real policies per role when auth is added.
 alter table departments       enable row level security;
+alter table category_pay_cycles enable row level security;
+alter table deduction_types   enable row level security;
+alter table audit_log         enable row level security;
 alter table pay_grades        enable row level security;
 alter table employees         enable row level security;
 alter table custom_deductions enable row level security;
