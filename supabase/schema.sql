@@ -144,6 +144,119 @@ alter table payslips          enable row level security;
 grant usage on schema public to service_role;
 grant all on all tables in schema public to service_role;
 
+-- ---------------------------------------------------------------------------
+-- Payroll run lifecycle: draft -> in_review -> approved -> finalised.
+-- A finalised run is locked for good. A mistake is fixed with a correction run.
+-- ---------------------------------------------------------------------------
+alter table pay_runs drop constraint if exists pay_runs_status_check;
+alter table pay_runs add constraint pay_runs_status_check
+  check (status in ('draft', 'in_review', 'approved', 'finalised'));
+
+alter table pay_runs add column if not exists department_id     uuid references departments(id);
+alter table pay_runs add column if not exists settings_snapshot jsonb;  -- the exact settings used, kept with the run
+alter table pay_runs add column if not exists submitted_by      text;
+alter table pay_runs add column if not exists submitted_at      timestamptz;
+alter table pay_runs add column if not exists approved_by       text;
+alter table pay_runs add column if not exists approved_at       timestamptz;
+alter table pay_runs add column if not exists approval_note     text;
+alter table pay_runs add column if not exists finalised_by      text;
+alter table pay_runs add column if not exists finalised_at      timestamptz;
+alter table pay_runs add column if not exists total_gross       bigint;
+alter table pay_runs add column if not exists total_deductions  bigint;
+alter table pay_runs add column if not exists total_net         bigint;
+alter table pay_runs add column if not exists employer_pension  bigint;
+
+-- payslips.result is the engine's full PayslipResult; inputs is everything the calculation used.
+alter table payslips add column if not exists inputs jsonb;
+alter table payslips add column if not exists employer_pension bigint not null default 0;
+alter table payslips add column if not exists credit_carried_forward bigint not null default 0;
+
+-- Credit purchases can be part-paid: `paid` is how much has been deducted so far.
+alter table credit_purchases add column if not exists paid bigint not null default 0;
+alter table credit_purchases add column if not exists settled_run_id uuid references pay_runs(id);
+
+-- Nothing about a finalised run may change, and none of its payslips either.
+create or replace function lock_finalised_runs() returns trigger
+language plpgsql as $$
+declare run_status text;
+begin
+  if tg_table_name = 'pay_runs' then
+    if old.status = 'finalised' then
+      raise exception 'A finalised payroll run cannot be changed. Create a correction run instead.';
+    end if;
+  else
+    select status into run_status from pay_runs where id = coalesce(new.pay_run_id, old.pay_run_id);
+    if run_status = 'finalised' then
+      raise exception 'Payslips in a finalised payroll run cannot be changed. Create a correction run instead.';
+    end if;
+  end if;
+  if tg_op = 'DELETE' then return old; end if;
+  return new;
+end $$;
+
+drop trigger if exists pay_runs_lock on pay_runs;
+create trigger pay_runs_lock before update or delete on pay_runs
+  for each row execute function lock_finalised_runs();
+drop trigger if exists payslips_lock on payslips;
+create trigger payslips_lock before insert or update or delete on payslips
+  for each row execute function lock_finalised_runs();
+
+-- Finalise in one transaction: settle credit purchases (oldest first), store totals, lock the run,
+-- write the audit entry. If any step fails, nothing changes.
+create or replace function finalise_pay_run(p_run uuid, p_actor_role text, p_actor_name text) returns void
+language plpgsql as $$
+declare
+  r pay_runs;
+  ps record;
+  cp record;
+  remaining bigint;
+  taking bigint;
+begin
+  select * into r from pay_runs where id = p_run for update;
+  if not found then raise exception 'Payroll run not found.'; end if;
+  if r.status <> 'approved' then raise exception 'Only an approved run can be finalised.'; end if;
+
+  for ps in
+    select employee_id,
+           coalesce((select sum((d->>'amount')::bigint)
+                       from jsonb_array_elements(result->'deductions') d
+                      where d->>'code' = 'credit'), 0) as credit_taken
+      from payslips where pay_run_id = p_run
+  loop
+    remaining := ps.credit_taken;
+    for cp in
+      select id, amount, paid from credit_purchases
+       where employee_id = ps.employee_id and settled = false
+       order by purchase_date, id for update
+    loop
+      exit when remaining <= 0;
+      taking := least(remaining, cp.amount - cp.paid);
+      update credit_purchases
+         set paid = cp.paid + taking,
+             settled = (cp.paid + taking >= cp.amount),
+             settled_run_id = case when cp.paid + taking >= cp.amount then p_run else null end
+       where id = cp.id;
+      remaining := remaining - taking;
+    end loop;
+  end loop;
+
+  update pay_runs set
+    status = 'finalised', finalised_at = now(), finalised_by = p_actor_name,
+    total_gross      = (select coalesce(sum(total_pay), 0)        from payslips where pay_run_id = p_run),
+    total_deductions = (select coalesce(sum(total_deductions), 0) from payslips where pay_run_id = p_run),
+    total_net        = (select coalesce(sum(net_pay), 0)          from payslips where pay_run_id = p_run),
+    employer_pension = (select coalesce(sum(employer_pension), 0) from payslips where pay_run_id = p_run)
+  where id = p_run;
+
+  insert into audit_log (actor_role, actor_name, action, entity, entity_id, detail)
+  values (p_actor_role, p_actor_name, 'run.finalise', 'pay_run', p_run::text,
+          jsonb_build_object('pay_date', r.pay_date, 'category', r.category));
+end $$;
+
+-- Only the server (service role) may call this. It must not be reachable from the public API.
+revoke execute on function finalise_pay_run(uuid, text, text) from public, anon, authenticated;
+grant execute on function finalise_pay_run(uuid, text, text) to service_role;
+
 -- Private bucket for payslip PDFs (records kept 7 years).
 insert into storage.buckets (id, name, public)
 values ('payslips', 'payslips', false)

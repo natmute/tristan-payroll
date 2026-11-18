@@ -69,7 +69,8 @@ insert into payroll_settings (id, settings) values (1, '{
   "overtime": {"weekdayAndSaturdayBps":15000,"sundayAndHolidayBps":20000},
   "proRataBasis": "calendar_days",
   "deductionsApplyToOvertime": true,
-  "transferCommissionBps": 300
+  "transferCommissionBps": 300,
+  "netChangeWarningBps": 1000
 }'::jsonb)
 on conflict (id) do nothing;
 
