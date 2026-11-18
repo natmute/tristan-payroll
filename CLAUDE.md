@@ -100,9 +100,15 @@ Do tax, pension, community service and medical (4%) apply to overtime pay as wel
 Transfers: is the 3% commission a fixed rule? Setting transferCommissionBps, default 300 (seen in the sample, to be confirmed).
 The sheet has an "FTN" column that is zero for everyone. What is it? Not modelled until the client explains.
 Ledger labels do not match between the salary sheet and the audit-trail template (for example Freight 150.00 appears as "Internet & TV Licences", Internet 34.00 as "Miscellaneous", and Transfers as "PWD Mechanical"). Only matters if a journal export is added later.
+How does a pay period relate to the pay date? Assumed: the period ends on the pay date and starts the day after the previous pay date (28 days for four-weekly). Both dates are editable when setting up a run.
+What net-pay change against the previous run should be flagged? Setting netChangeWarningBps, default 1000 (10%).
+Working-days pro-rata: are public holidays excluded? Currently only weekends are (setting proRataBasis = working_days).
+What counts as "needs attention" on the CFO's dashboard? The current list is a sensible default.
+Data residency: where does the Government want data held, and where does the Starlink traffic exit? The Supabase project is in eu-west-1 (Ireland). The region cannot be changed later without a migration.
 Day plan (tracked)
 [x] Mon: scaffold, CLAUDE.md, engine with passing tests
 [x] Tue: Supabase schema, seed, employees, departments, grades
 [ ] Wed: payroll run, payslip PDF, credit purchases, expat rules
 [ ] Thu: dashboard, settings page, portal, polish, deploy (Vercel)
 [ ] Fri: buffer and rehearsal
+Where we are: see docs/PROGRESS.md (status, what is built, what is next, how to run). Ideas outside scope go in docs/PARKED_IDEAS.md.
