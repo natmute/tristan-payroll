@@ -4,7 +4,10 @@ import { calculatePayslip, type Category, type PayrollSettings } from '@tristan/
 import { db } from '@/lib/supabase';
 import { CATEGORY_LABELS, fullName, gbp, ukDate } from '@/lib/format';
 import { StaffOnly } from '@/components/StaffOnly';
+import { ActionForm } from '@/components/ActionForm';
+import { SelectField, TextField } from '@/components/FormFields';
 import { Card, Chip, ErrorBox, PageTitle, Td, Th } from '@/components/ui';
+import { addCredit, addDeduction, removeDeduction } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +34,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const supabase = db();
 
-  const [emp, deds, credits, settingsRow] = await Promise.all([
+  const [emp, deds, credits, settingsRow, types] = await Promise.all([
     supabase.from('employees')
       .select('*, departments(name, code), pay_grades(code, name)').eq('id', id).maybeSingle<Employee>(),
     supabase.from('custom_deductions')
@@ -39,6 +42,8 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
     supabase.from('credit_purchases')
       .select('id, purchase_date, description, amount, settled').eq('employee_id', id).order('purchase_date').returns<Credit[]>(),
     supabase.from('payroll_settings').select('settings').eq('id', 1).single<{ settings: PayrollSettings }>(),
+    // Transfer commission is added by the engine, so it is not offered as a manual deduction.
+    supabase.from('deduction_types').select('code, label').neq('code', 'transfer_commission').order('sort_order'),
   ]);
 
   if (emp.error) return <ErrorBox message={emp.error.message} />;
@@ -71,7 +76,14 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
       <PageTitle
         title={fullName(e)}
         subtitle={`${e.employee_no} · ${e.job_title ?? 'No job title'}`}
-        actions={e.active ? <Chip tone="green">Active</Chip> : <Chip>Inactive</Chip>}
+        actions={
+          <div className="flex items-center gap-3">
+            {e.active ? <Chip tone="green">Active</Chip> : <Chip>Inactive</Chip>}
+            <Link href={`/employees/${e.id}/edit`} className="rounded bg-primary-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-700">
+              Edit
+            </Link>
+          </div>
+        }
       />
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -109,14 +121,33 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
             <p className="text-sm text-slate-600">No recurring deductions.</p>
           ) : (
             <table className="w-full text-sm">
-              <thead><tr><Th>Type</Th><Th right>Amount</Th></tr></thead>
+              <thead><tr><Th>Type</Th><Th right>Amount</Th><Th /></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {deductions.map((d) => (
-                  <tr key={d.id}><Td>{d.deduction_types?.label ?? d.type_code}</Td><Td right>{gbp(d.amount)}</Td></tr>
+                  <tr key={d.id}>
+                    <Td>{d.deduction_types?.label ?? d.type_code}</Td>
+                    <Td right>{gbp(d.amount)}</Td>
+                    <Td right>
+                      <form action={removeDeduction.bind(null, e.id, d.id)}>
+                        <button className="text-xs text-red-700 hover:underline" aria-label={`Remove ${d.deduction_types?.label ?? d.type_code}`}>Remove</button>
+                      </form>
+                    </Td>
+                  </tr>
                 ))}
               </tbody>
             </table>
           )}
+          <div className="mt-4 border-t border-slate-100 pt-3">
+            <h3 className="mb-2 text-sm font-medium text-slate-700">Add a deduction</h3>
+            <ActionForm action={addDeduction.bind(null, e.id)} submitLabel="Add" resetOnSuccess compact>
+              <div className="grid grid-cols-2 gap-3">
+                <SelectField label="Type" name="type_code" id="deduction-type" required placeholder="Choose..."
+                  options={(types.data ?? []).map((t) => ({ value: t.code, label: t.label }))}
+                  hint="Transfers add the transfer commission automatically." />
+                <TextField label="Amount (£)" name="amount" id="deduction-amount" required inputMode="decimal" placeholder="10.00" />
+              </div>
+            </ActionForm>
+          </div>
         </Card>
 
         <Card>
@@ -137,6 +168,16 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
             </table>
           )}
           <p className="mt-3 text-sm">Outstanding balance, deducted from the next salary: <strong>{gbp(creditBalance)}</strong></p>
+          <div className="mt-4 border-t border-slate-100 pt-3">
+            <h3 className="mb-2 text-sm font-medium text-slate-700">Record a credit purchase</h3>
+            <ActionForm action={addCredit.bind(null, e.id)} submitLabel="Add" resetOnSuccess compact>
+              <div className="grid grid-cols-3 gap-3">
+                <TextField label="Description" name="description" required placeholder="Island store" />
+                <TextField label="Amount (£)" name="amount" id="credit-amount" required inputMode="decimal" placeholder="18.00" />
+                <TextField label="Date" name="purchase_date" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} />
+              </div>
+            </ActionForm>
+          </div>
         </Card>
       </div>
 

@@ -43,7 +43,15 @@ export default async function EmployeesPage({
   const field = 'rounded border border-slate-300 bg-white px-2 py-1.5 text-sm';
   return (
     <StaffOnly>
-      <PageTitle title="Employees" subtitle={data ? `${data.length} shown` : undefined} />
+      <PageTitle
+        title="Employees"
+        subtitle={data ? `${data.length} shown` : undefined}
+        actions={
+          <Link href="/employees/new" className="rounded bg-primary-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-700">
+            Add employee
+          </Link>
+        }
+      />
       <Card className="mb-4">
         <form className="flex flex-wrap items-end gap-3" role="search">
           <label className="text-sm">

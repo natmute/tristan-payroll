@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { db } from '@/lib/supabase';
+import { isAdmin } from '@/lib/role';
 import { CATEGORY_LABELS, CYCLE_LABELS } from '@/lib/format';
 import type { Category } from '@tristan/payroll-engine';
 import { StaffOnly } from '@/components/StaffOnly';
@@ -12,6 +13,7 @@ type Cycle = { category: Category; cycle: string; pay_day_of_month: number | nul
 
 export default async function DepartmentsPage() {
   const supabase = db();
+  const admin = await isAdmin();
   const [depts, cycles, emps] = await Promise.all([
     supabase.from('departments').select('id, code, name, category').order('name').returns<Dept[]>(),
     supabase.from('category_pay_cycles').select('category, cycle, pay_day_of_month').returns<Cycle[]>(),
@@ -28,6 +30,11 @@ export default async function DepartmentsPage() {
       <PageTitle
         title="Departments"
         subtitle="Departments sit inside one of two categories. The pay cycle belongs to the category."
+        actions={admin && (
+          <Link href="/departments/new" className="rounded bg-primary-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-700">
+            Add department
+          </Link>
+        )}
       />
       {(Object.keys(CATEGORY_LABELS) as Category[]).map((cat) => {
         const cycle = cycles.data?.find((c) => c.category === cat);
@@ -57,9 +64,10 @@ export default async function DepartmentsPage() {
                     <p className="mt-1 text-xs text-slate-500">Code {d.code}</p>
                     <p className="mt-3 text-2xl font-semibold tabular-nums text-primary-800">{headcount.get(d.id) ?? 0}</p>
                     <p className="text-xs text-slate-500">active employees</p>
-                    <Link href={`/employees?dept=${d.id}`} className="mt-3 inline-block text-sm text-primary-700 hover:underline">
-                      View employees
-                    </Link>
+                    <div className="mt-3 flex gap-4 text-sm">
+                      <Link href={`/employees?dept=${d.id}`} className="text-primary-700 hover:underline">View employees</Link>
+                      {admin && <Link href={`/departments/${d.id}/edit`} className="text-primary-700 hover:underline">Edit</Link>}
+                    </div>
                   </Card>
                 ))}
               </div>
