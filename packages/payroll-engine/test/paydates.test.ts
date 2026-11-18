@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { nextPayDate, type PayCycle } from '../src';
+import { nextPayDate, payDatesAround, type PayCycle } from '../src';
 
 const gov: PayCycle = { cycle: 'four_weekly', anchorPayDate: '2026-11-16', payDayOfMonth: null };
 const monthly = (day: number): PayCycle => ({ cycle: 'monthly', anchorPayDate: null, payDayOfMonth: day });
@@ -22,6 +22,21 @@ describe('four-weekly pay dates (anchor 16 Nov 2026)', () => {
   });
   it('without an anchor, returns null', () => {
     expect(nextPayDate({ ...gov, anchorPayDate: null }, '2026-11-18')).toBeNull();
+  });
+});
+
+describe('payDatesAround', () => {
+  it('four-weekly: two before the next date, the next date, one after', () => {
+    expect(payDatesAround(gov, '2026-11-18')).toEqual(['2026-10-19', '2026-11-16', '2026-12-14', '2027-01-11']);
+  });
+  it('monthly: same shape, month by month', () => {
+    expect(payDatesAround(monthly(20), '2026-11-18')).toEqual(['2026-09-20', '2026-10-20', '2026-11-20', '2026-12-20']);
+  });
+  it('monthly: crosses the year end and clamps short months', () => {
+    expect(payDatesAround(monthly(31), '2027-01-05', 1, 1)).toEqual(['2026-12-31', '2027-01-31', '2027-02-28']);
+  });
+  it('returns nothing when the cycle is not configured', () => {
+    expect(payDatesAround({ ...gov, anchorPayDate: null }, '2026-11-18')).toEqual([]);
   });
 });
 

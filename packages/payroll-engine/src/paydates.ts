@@ -21,6 +21,29 @@ function toIso(ms: number): string {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 }
 
+/** Monthly pay date for a year and zero-based month, clamped to the month's last day. */
+function monthlyDate(year: number, month: number, day: number): string {
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  return toIso(Date.UTC(year, month, Math.min(day, lastDay)));
+}
+
+/**
+ * Pay dates around today, oldest first: `before` dates before the next pay date, the next one,
+ * then `after` dates after it. Used to pick the date for a new run.
+ */
+export function payDatesAround(c: PayCycle, todayIso: string, before = 2, after = 1): string[] {
+  const next = nextPayDate(c, todayIso);
+  if (!next) return [];
+  const dates: string[] = [];
+  if (c.cycle === 'four_weekly') {
+    for (let i = -before; i <= after; i++) dates.push(toIso(toUtc(next) + i * 28 * DAY_MS));
+  } else {
+    const n = new Date(toUtc(next));
+    for (let i = -before; i <= after; i++) dates.push(monthlyDate(n.getUTCFullYear(), n.getUTCMonth() + i, c.payDayOfMonth!));
+  }
+  return dates;
+}
+
 /** The first pay date on or after `todayIso`, or null when the cycle is not configured. */
 export function nextPayDate(c: PayCycle, todayIso: string): string | null {
   const today = toUtc(todayIso);

@@ -46,6 +46,11 @@ export interface PayrollSettings {
    * Added as its own line after a "transfers" custom deduction. 0 = no commission.
    */
   transferCommissionBps: number;
+  /**
+   * A payroll run flags employees whose net pay moved by more than this, compared with the previous run.
+   * 1000 = 10%. TODO(client): confirm the threshold the CFO wants.
+   */
+  netChangeWarningBps: number;
 }
 
 // All of these are editable on the Settings page; none are hard-coded elsewhere.
@@ -82,4 +87,5 @@ export const defaultSettings: PayrollSettings = {
   proRataBasis: 'calendar_days',
   deductionsApplyToOvertime: true,
   transferCommissionBps: 300,
+  netChangeWarningBps: 1000,
 };
