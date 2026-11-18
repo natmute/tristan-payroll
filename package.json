@@ -6,6 +6,8 @@
     "apps/*"
   ],
   "scripts": {
+    "dev": "npm run dev --workspace @tristan/web",
+    "build": "npm run build --workspace @tristan/web",
     "test": "npm test --workspaces --if-present"
   }
 }
