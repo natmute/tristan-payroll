@@ -91,6 +91,22 @@ create table if not exists payslips (
 create index if not exists employees_category_idx on employees(category);
 create index if not exists payslips_employee_idx on payslips(employee_id);
 
+-- Lock down: RLS on with no policies, so the public anon key can read nothing.
+-- The server uses the service role key, which bypasses RLS.
+-- TODO(full build): add real policies per role when auth is added.
+alter table departments       enable row level security;
+alter table pay_grades        enable row level security;
+alter table employees         enable row level security;
+alter table custom_deductions enable row level security;
+alter table credit_purchases  enable row level security;
+alter table payroll_settings  enable row level security;
+alter table pay_runs          enable row level security;
+alter table payslips          enable row level security;
+
+-- Needed if "grant API access to new tables automatically" is switched off.
+grant usage on schema public to service_role;
+grant all on all tables in schema public to service_role;
+
 -- Private bucket for payslip PDFs (records kept 7 years).
 insert into storage.buckets (id, name, public)
 values ('payslips', 'payslips', false)
