@@ -18,8 +18,10 @@ create table if not exists departments (
 create table if not exists category_pay_cycles (
   category         text primary key check (category in ('government', 'expat_contractor')),
   cycle            text not null check (cycle in ('four_weekly', 'monthly')),
-  pay_day_of_month int check (pay_day_of_month between 1 and 31)  -- monthly cycles only
+  pay_day_of_month int check (pay_day_of_month between 1 and 31), -- monthly cycles only
+  anchor_pay_date  date  -- a known pay date; four-weekly pay dates repeat every 28 days from it
 );
+alter table category_pay_cycles add column if not exists anchor_pay_date date;
 
 -- Each deduction type is its own named item so a ledger code can be attached later.
 -- sort_order follows the client's current payslip line order.

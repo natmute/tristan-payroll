@@ -10,10 +10,12 @@ insert into departments (code, name, category) values
 on conflict (code) do nothing;
 
 -- Client rules: government paid every 4 weeks, expats and contractors monthly around the 20th.
-insert into category_pay_cycles (category, cycle, pay_day_of_month) values
-  ('government', 'four_weekly', null),
-  ('expat_contractor', 'monthly', 20)
-on conflict (category) do nothing;
+-- Anchor = the sample sheet's pay date (16 Nov 2026). Later four-weekly dates repeat every 28 days.
+insert into category_pay_cycles (category, cycle, pay_day_of_month, anchor_pay_date) values
+  ('government', 'four_weekly', null, '2026-11-16'),
+  ('expat_contractor', 'monthly', 20, null)
+on conflict (category) do update
+  set anchor_pay_date = coalesce(category_pay_cycles.anchor_pay_date, excluded.anchor_pay_date);
 
 -- TODO(client): grade names and scales unknown. Placeholders only.
 insert into pay_grades (code, name) values
