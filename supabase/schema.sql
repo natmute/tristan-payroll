@@ -203,7 +203,9 @@ create trigger payslips_lock before insert or update or delete on payslips
 
 -- Finalise in one transaction: settle credit purchases (oldest first), store totals, lock the run,
 -- write the audit entry. If any step fails, nothing changes.
-create or replace function finalise_pay_run(p_run uuid, p_actor_role text, p_actor_name text) returns void
+-- p_at is for seeding history only: the app never passes it, so real runs are stamped with the time they happen.
+drop function if exists finalise_pay_run(uuid, text, text);
+create or replace function finalise_pay_run(p_run uuid, p_actor_role text, p_actor_name text, p_at timestamptz default now()) returns void
 language plpgsql as $$
 declare
   r pay_runs;
@@ -241,21 +243,21 @@ begin
   end loop;
 
   update pay_runs set
-    status = 'finalised', finalised_at = now(), finalised_by = p_actor_name,
+    status = 'finalised', finalised_at = p_at, finalised_by = p_actor_name,
     total_gross      = (select coalesce(sum(total_pay), 0)        from payslips where pay_run_id = p_run),
     total_deductions = (select coalesce(sum(total_deductions), 0) from payslips where pay_run_id = p_run),
     total_net        = (select coalesce(sum(net_pay), 0)          from payslips where pay_run_id = p_run),
     employer_pension = (select coalesce(sum(employer_pension), 0) from payslips where pay_run_id = p_run)
   where id = p_run;
 
-  insert into audit_log (actor_role, actor_name, action, entity, entity_id, detail)
-  values (p_actor_role, p_actor_name, 'run.finalise', 'pay_run', p_run::text,
+  insert into audit_log (at, actor_role, actor_name, action, entity, entity_id, detail)
+  values (p_at, p_actor_role, p_actor_name, 'run.finalise', 'pay_run', p_run::text,
           jsonb_build_object('pay_date', r.pay_date, 'category', r.category));
 end $$;
 
 -- Only the server (service role) may call this. It must not be reachable from the public API.
-revoke execute on function finalise_pay_run(uuid, text, text) from public, anon, authenticated;
-grant execute on function finalise_pay_run(uuid, text, text) to service_role;
+revoke execute on function finalise_pay_run(uuid, text, text, timestamptz) from public, anon, authenticated;
+grant execute on function finalise_pay_run(uuid, text, text, timestamptz) to service_role;
 
 -- Private bucket for payslip PDFs (records kept 7 years).
 insert into storage.buckets (id, name, public)

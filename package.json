@@ -8,6 +8,13 @@
   "scripts": {
     "dev": "npm run dev --workspace @tristan/web",
     "build": "npm run build --workspace @tristan/web",
-    "test": "npm test --workspaces --if-present"
+    "test": "npm test --workspaces --if-present",
+    "db:bundle": "esbuild scripts/db.ts --bundle --platform=node --format=cjs --external:pg --outfile=scripts/.build/db.cjs --log-level=warning",
+    "db:history": "npm run db:bundle && node scripts/.build/db.cjs history",
+    "db:reset": "npm run db:bundle && node scripts/.build/db.cjs reset --yes"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "pg": "^8.13.1"
   }
 }
