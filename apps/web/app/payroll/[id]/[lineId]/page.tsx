@@ -1,69 +1,120 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { db } from '@/lib/supabase';
-import { CATEGORY_LABELS, gbp, ukDate } from '@/lib/format';
-import { deductionOrder, loadRun, pct, type LineRow } from '@/lib/payroll';
+import { buildPayslip } from '@/lib/payslip';
+import { gbp, ukDate } from '@/lib/format';
 import { StaffOnly } from '@/components/StaffOnly';
-import { Card, Chip, ErrorBox, PageTitle, Td } from '@/components/ui';
+import { ActionForm } from '@/components/ActionForm';
+import { PrintButton } from '@/components/PrintButton';
+import { Card, Chip, ErrorBox, Td } from '@/components/ui';
+import { resendPayslip } from '../../actions';
 
 export const dynamic = 'force-dynamic';
 
-// Full breakdown of one payslip line, in the client's payslip order, with the rates that were applied.
-export default async function LinePage({ params }: { params: Promise<{ id: string; lineId: string }> }) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt>
+      <dd className="mt-0.5">{children}</dd>
+    </div>
+  );
+}
+
+// The payslip: the same data as the PDF, in the client's line order.
+export default async function PayslipPage({ params }: { params: Promise<{ id: string; lineId: string }> }) {
   const { id, lineId } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id) || !/^[0-9a-f-]{36}$/i.test(lineId)) notFound();
 
-  let loaded, order;
+  let p;
   try {
-    loaded = await loadRun(id);
-    order = await deductionOrder();
+    p = await buildPayslip(lineId);
   } catch (e) {
     return <ErrorBox message={(e as Error).message} />;
   }
-  if (!loaded) notFound();
-  const line = loaded.lines.find((l: LineRow) => l.id === lineId);
-  if (!line) notFound();
-
-  const { run, names } = loaded;
-  const emp = names.get(line.employee_id);
-  const { data: e } = await db().from('employees').select('job_title, departments(name)').eq('id', line.employee_id).maybeSingle<{ job_title: string | null; departments: { name: string } | null }>();
-  const r = line.result;
-  const settings = run.settings_snapshot;
-  const rules = settings?.categories[run.category];
-  const deductions = [...r.deductions].sort((a, b) => order(a.code) - order(b.code));
-  // Rate lines show the rate used. Fixed amounts have no rate.
-  const rateOf = (code: string) => {
-    const p = rules?.percent.find((x) => x.code === code);
-    return p ? ` (${pct(p.bps)})` : '';
-  };
+  if (!p || p.runId !== id) notFound();
+  const e = p.employee;
 
   return (
     <StaffOnly>
-      <p className="mb-2 text-sm"><Link href={`/payroll/${run.id}`} className="text-primary-700 hover:underline">&larr; Back to the run</Link></p>
-      <PageTitle
-        title={emp?.name ?? 'Employee'}
-        subtitle={`${emp?.no ?? ''} · ${e?.departments?.name ?? ''} · ${CATEGORY_LABELS[run.category]} · pay date ${ukDate(run.pay_date)}`}
-      />
-      <Card className="max-w-xl">
-        {line.inputs.proRata && (
-          <p className="mb-3 text-sm text-amber-900"><Chip tone="amber">Part period</Chip> Paid for {line.inputs.proRata.daysWorked} of {line.inputs.proRata.daysInPeriod} days.</p>
+      <p className="no-print mb-2 text-sm"><Link href={`/payroll/${p.runId}`} className="text-primary-700 hover:underline">&larr; Back to the run</Link></p>
+
+      <Card className="mx-auto max-w-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+          <div className="flex items-center gap-3">
+            {/* TODO(client): the real logo will be sent by the client. Neutral placeholder for now. */}
+            <div aria-hidden="true" className="flex h-12 w-12 items-center justify-center bg-primary-900 text-sm font-semibold text-white">TDC</div>
+            <div>
+              <h1 className="text-lg font-semibold text-primary-900">Government of Tristan da Cunha</h1>
+              <p className="text-sm text-slate-600">Payslip</p>
+            </div>
+          </div>
+          <div className="text-right text-sm">
+            <p>Pay date {ukDate(p.payDate)}</p>
+            <p className="text-slate-600">Period {ukDate(p.periodStart)} to {ukDate(p.periodEnd)}</p>
+          </div>
+        </div>
+
+        {p.draft && (
+          <p className="mt-4 rounded border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900">
+            <Chip tone="amber">Draft</Chip> This payroll run is not finalised. Figures may change.
+          </p>
         )}
-        <table className="w-full text-sm">
+
+        <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+          <Field label="Employee">{e.name}</Field>
+          <Field label="Number">{e.no}</Field>
+          <Field label="Category">{p.categoryLabel}</Field>
+          <Field label="Department">{e.department}</Field>
+          <Field label="Grade">{e.grade}</Field>
+          <Field label="Job title">{e.jobTitle}</Field>
+        </dl>
+
+        {p.partPeriod && (
+          <p className="mt-3 text-sm text-amber-900"><Chip tone="amber">Part period</Chip> Paid for {p.partPeriod.daysWorked} of {p.partPeriod.daysInPeriod} days.</p>
+        )}
+
+        <table className="mt-4 w-full text-sm">
           <tbody className="divide-y divide-slate-100">
-            <tr><Td>Salary</Td><Td right>{gbp(r.salary)}</Td></tr>
-            <tr><Td>Allowance</Td><Td right>{gbp(r.allowance)}</Td></tr>
-            {r.overtimePay > 0 && <tr><Td>Overtime</Td><Td right>{gbp(r.overtimePay)}</Td></tr>}
-            <tr className="font-semibold"><Td>Total</Td><Td right>{gbp(r.totalPay)}</Td></tr>
-            {deductions.map((d, i) => (
-              <tr key={`${d.code}-${i}`}><Td className="text-slate-700">{d.label}{rateOf(d.code)}</Td><Td right>-{gbp(d.amount)}</Td></tr>
+            <tr><td colSpan={2} className="pt-2 text-xs font-semibold uppercase tracking-wide text-primary-900">Earnings</td></tr>
+            {p.earnings.map((l) => <tr key={l.code}><Td>{l.label}</Td><Td right>{gbp(l.amount)}</Td></tr>)}
+            <tr className="bg-slate-100 font-semibold"><Td>Total</Td><Td right>{gbp(p.total)}</Td></tr>
+            <tr><td colSpan={2} className="pt-3 text-xs font-semibold uppercase tracking-wide text-primary-900">Deductions</td></tr>
+            {p.deductions.map((l) => (
+              <tr key={l.code}>
+                <Td>{l.label}{l.detail && <span className="block text-xs text-slate-500">{l.detail}</span>}</Td>
+                <Td right>{l.amount > 0 ? '-' : ''}{gbp(l.amount)}</Td>
+              </tr>
             ))}
-            <tr className="bg-primary-900 font-semibold text-white"><Td>Net pay</Td><Td right>{gbp(r.netPay)}</Td></tr>
-            <tr className="text-slate-600"><Td>Employer pension (employer contribution, not deducted)</Td><Td right>{gbp(r.employerPension)}</Td></tr>
-            {r.creditCarriedForward > 0 && <tr className="text-amber-900"><Td>Credit carried forward to the next run</Td><Td right>{gbp(r.creditCarriedForward)}</Td></tr>}
+            <tr className="bg-primary-900 text-base font-semibold text-white"><Td>Net pay</Td><Td right>{gbp(p.net)}</Td></tr>
           </tbody>
         </table>
-        <p className="mt-3 text-xs text-slate-500">Rates shown are from the settings kept with this run. The printable payslip and PDF are built next.</p>
+
+        <p className="mt-3 text-xs text-slate-600">Employer pension contribution (paid by the employer, not deducted from the employee): {gbp(p.employerPension)}</p>
+        {p.creditCarriedForward > 0 && (
+          <p className="mt-1 text-xs text-amber-900">Credit balance carried forward to the next pay: {gbp(p.creditCarriedForward)}</p>
+        )}
+        {p.rates.length > 0 && <p className="mt-1 text-xs text-slate-500">Rates applied: {p.rates.join(', ')}.</p>}
       </Card>
+
+      <div className="no-print mx-auto mt-4 max-w-2xl space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <a href={`/api/payslips/${p.lineId}/pdf`} download
+            className="rounded bg-primary-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-700">
+            Download PDF
+          </a>
+          <PrintButton />
+        </div>
+        {e.email ? (
+          <ActionForm action={resendPayslip.bind(null, p.lineId)} submitLabel="Resend email (demo)" compact
+            successMessage="Demo only: no email was sent. In the full build the PDF is attached to an email to the employee.">
+            {null}
+          </ActionForm>
+        ) : (
+          <p className="rounded border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900">
+            No email on file: download the PDF and hand it out.
+          </p>
+        )}
+        {p.draft && <p className="text-xs text-slate-500">Emails can be sent once the run is finalised.</p>}
+      </div>
     </StaffOnly>
   );
 }

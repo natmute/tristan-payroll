@@ -6,6 +6,7 @@ import { db } from '@/lib/supabase';
 import { actor, logAction } from '@/lib/audit';
 import { requireRole } from '@/lib/role';
 import { FormError, checked, isoDate, optText, required, run, text, type ActionResult } from '@/lib/form';
+import { buildPayslip } from '@/lib/payslip';
 import {
   lineToRow, loadEmployeesForRun, loadPreviousRun, loadRun, loadSettings, toLine, type RunStatus,
 } from '@/lib/payroll';
@@ -174,4 +175,16 @@ export async function deleteDraft(id: string): Promise<ActionResult> {
   if (result) return result;
   refresh();
   redirect('/payroll');
+}
+
+// Stub: the prototype sends no email. It checks the same conditions a real send would, and writes the audit entry.
+export async function resendPayslip(lineId: string): Promise<ActionResult> {
+  return run(async () => {
+    await requireRole([...STAFF]);
+    const data = await buildPayslip(lineId);
+    if (!data) throw new FormError('This payslip no longer exists.');
+    if (data.draft) throw new FormError('Payslips are emailed once the run is finalised.');
+    if (!data.employee.email) throw new FormError('This employee has no email address. Download the PDF and hand it out.');
+    await logAction('payslip.resend', 'payslip', lineId, { employee_no: data.employee.no, pay_date: data.payDate, delivery: 'stub: nothing was sent' });
+  });
 }

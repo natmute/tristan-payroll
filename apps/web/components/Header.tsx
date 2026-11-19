@@ -20,7 +20,7 @@ const NAV: Record<Role, { href: string; label: string }[]> = {
 export async function Header() {
   const role = await currentRole();
   return (
-    <header className="bg-primary-800 text-white">
+    <header className="no-print bg-primary-800 text-white">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
         <Link href="/" className="font-semibold tracking-tight">Tristan da Cunha Payroll</Link>
         <nav className="flex flex-wrap gap-4 text-sm">

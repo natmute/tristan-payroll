@@ -1,6 +1,6 @@
 # Progress and handover notes
 
-Last updated: Wed 18 Nov 2026 (end of Wednesday's session). Demo: Fri 20 Nov 2026.
+Last updated: Thu 19 Nov 2026. Demo: Fri 20 Nov 2026.
 The rules, conventions and open questions live in `CLAUDE.md`. This file records **where the build stands**.
 
 ## How to run it
@@ -12,6 +12,10 @@ The rules, conventions and open questions live in `CLAUDE.md`. This file records
 3. In the Supabase SQL Editor, run `supabase/schema.sql`, then `supabase/seed.sql`. Both are safe to re-run.
 4. `npm run dev`, then open http://localhost:3000.
 5. `npm test` runs the engine tests (67 at the time of writing).
+6. `npm run db:history` adds the two finalised October demo runs (safe to re-run, adds only).
+   `npm run db:reset` wipes the database and re-seeds everything, including that history. It deletes all data in the
+   project named in `.env.local`, so use it on the demo database only. **It has not been run yet**: the automated
+   permission check blocked it as destructive. Run it once yourself before relying on it.
 
 Supabase project region is eu-west-1 (Ireland). Hosting must be UK/EU. See the data-residency question below.
 
@@ -36,6 +40,13 @@ Supabase project region is eu-west-1 (Ireland). Hosting must be UK/EU. See the d
 - Employees: list with filters, detail page with a calculation preview, add and edit, recurring deductions, credit purchases.
 - Departments and Pay grades: list, add and edit (administrators only).
 - Payroll: list, set up, review (checks, comparison, lines, settings applied), approve, finalise, per-employee breakdown.
+- Payslip: on-screen payslip and a PDF (`@react-pdf/renderer`) built from one shared data shape (`apps/web/lib/payslip.ts`).
+  Client line order, statutory lines always shown, transfers as one line with the commission shown on screen, employer pension
+  as a separate contribution line, a DRAFT notice until the run is finalised. Download PDF, Print, and a stubbed
+  "Resend email" (audit entry, nothing sent). Employees with no email get a "download and hand out" message.
+  The logo is a neutral placeholder. Tax-year-to-date figures are not included.
+- Demo history: two finalised runs (Government 19 Oct, Expats 20 Oct) generated with the engine. The 16 Nov Government run
+  compares against the October one (flags one salary change and one new starter).
 - Audit log rows are written for every change. There is no screen to view them yet.
 - Every database call has a timeout; reads retry; slow calls are logged (Starlink can stall).
 
@@ -47,30 +58,30 @@ Supabase project region is eu-west-1 (Ireland). Hosting must be UK/EU. See the d
 | Tue | Schema, seed, employees, departments, grades | Done |
 | Wed | Payroll run | Done (set up, review, approve, finalise, lock) |
 | Wed | Credit purchases | Done (record, deduct on finalise, part payments) |
-| Wed | Expat rules | Engine done and tested. Not yet run through the browser |
-| Wed | Payslip PDF | **Not started** |
+| Wed | Expat rules | Done (engine, seeded 20 Oct run, expat payslip checked in the browser) |
+| Wed | Payslip PDF | Done (screen, PDF, print, stubbed resend) |
 | Thu | Settings page with versioning, audit log screen, employee portal, leave, polish, Vercel deploy | Not started |
 | Fri | Buffer and rehearsal | |
 
 ## Not built yet, in the order I would do it
 
-1. **Historical runs in the seed.** The comparison screen says "no earlier run" until one is finalised, and the demo script
-   expects previous runs. Plan: a repeatable script that builds a 19 Oct Government run and a 20 Oct Expats run with
-   the engine's `buildRun`, then finalises them. Needs a bundled TS script (esbuild is already installed) and `pg`.
-2. **Payslip view and PDF** (`@react-pdf/renderer`), stubbed email, "Download PDF" and "Resend email" with audit entries.
-   The line page at `/payroll/[id]/[lineId]` already has the breakdown in the client's order.
-3. **Overtime entry** on the review step. The engine supports it. There is no screen to enter hours.
-4. **Payment summary**, printable, with an optional signature column.
-5. **Correction runs.** Today a second run for the same category and pay date is refused, so a finalised mistake cannot yet be corrected.
-6. **Tax & Deduction Settings** page with effective dates, reasons and versions, and an **Audit Log** screen.
-7. **Employee portal** and **Leave** display.
-8. **Reset script**: one command to wipe and re-seed (`npm run db:reset`).
+1. **Tax & Deduction Settings** page with effective dates, reasons and versions (admin edits a rate, it is logged, applies to future runs).
+2. **Audit Log** screen (the rows already exist; filter by who, when, action).
+3. **Employee portal** (own payslips with PDF, leave balances, deduction history) and **Leave** display. The PDF route
+   currently returns 403 for the Employee role. The portal needs an "own payslips only" check.
+4. **Dashboard**: use finalised-run actuals for the KPIs now that finalised runs exist, and make "New payroll run" a real button
+   (it is still greyed out and says "coming next").
+5. **Overtime entry** on the review step. The engine supports it. There is no screen to enter hours.
+6. **Payment summary**, printable, with an optional signature column.
+7. **Correction runs.** Today a second run for the same category and pay date is refused, so a finalised mistake cannot yet be corrected.
+8. **Deploy to Vercel** with env vars documented. Hosting and domain must end up in the Government's name.
 9. Sidebar layout (the kickoff prompt asked for one; we kept the top header on request).
 
 ## Test tooling is not in the repo
 
 The browser and database tests used during the build live in a temporary folder outside the repo, and may be cleared.
-They covered: editing flows (23 checks), the payroll run flow (34 checks), and the database lock and finalise function (12 checks).
+They covered: editing flows (23 checks), the payroll run flow (34 checks), the payslip and PDF flow (31 checks, including
+reading the text back out of the generated PDF), and the database lock and finalise function (12 checks).
 They need `playwright-core` driving Chrome, and `pg`. Worth moving into a `scripts/` or `tests/e2e/` folder before the full build.
 Those scripts create their own test rows and remove them afterwards. To remove the lock triggers for cleanup they run
 `alter table ... disable trigger` and always re-enable it.

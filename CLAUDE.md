@@ -108,7 +108,7 @@ Data residency: where does the Government want data held, and where does the Sta
 Day plan (tracked)
 [x] Mon: scaffold, CLAUDE.md, engine with passing tests
 [x] Tue: Supabase schema, seed, employees, departments, grades
-[ ] Wed: payroll run, payslip PDF, credit purchases, expat rules
+[x] Wed: payroll run, payslip PDF, credit purchases, expat rules
 [ ] Thu: dashboard, settings page, portal, polish, deploy (Vercel)
 [ ] Fri: buffer and rehearsal
 Where we are: see docs/PROGRESS.md (status, what is built, what is next, how to run). Ideas outside scope go in docs/PARKED_IDEAS.md.
