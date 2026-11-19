@@ -49,7 +49,7 @@ export default async function NewRunPage({
   if (periodStart && periodEnd) {
     try {
       const employees = await loadEmployeesForRun(category, sp.dept || null, { start: periodStart, end: periodEnd });
-      count = buildRun(employees, { start: periodStart, end: periodEnd }, await loadSettings()).length;
+      count = buildRun(employees, { start: periodStart, end: periodEnd }, await loadSettings(payDate)).length;
     } catch (e) {
       note = (e as Error).message;
     }
@@ -68,7 +68,7 @@ export default async function NewRunPage({
             hint={row ? `${CYCLE_LABELS[row.cycle]}` : undefined} />
           <SelectField label="Department" name="dept" defaultValue={sp.dept ?? ''} placeholder="All departments in this category"
             options={(depts.data ?? []).map((d) => ({ value: d.id, label: d.name }))} />
-          <SelectField label="Pay date" name="pay_date" defaultValue={payDate}
+          <SelectField label="Pay date" name="pay_date" id="pay_date_pick" defaultValue={payDate}
             options={dates.map((d) => ({ value: d, label: ukDate(d) }))} />
           <div className="sm:col-span-3">
             <button className="rounded border border-primary-600 px-4 py-1.5 text-sm font-medium text-primary-700 hover:bg-primary-50">

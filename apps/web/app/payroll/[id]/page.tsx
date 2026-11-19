@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { checkRun, compareRuns, totalsOf, type Category } from '@tristan/payroll-engine';
+import { checkRun, compareRuns, totalsOf, withDefaults, type Category } from '@tristan/payroll-engine';
 import { currentRole } from '@/lib/role';
 import { CATEGORY_LABELS, gbp, signedGbp, signedPct, ukDate } from '@/lib/format';
 import {
@@ -47,7 +47,7 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
     loaded = await loadRun(id);
     if (!loaded) notFound();
     previous = await loadPreviousRun(loaded.run);
-    settings = loaded.run.settings_snapshot ?? (await loadSettings());
+    settings = loaded.run.settings_snapshot ? withDefaults(loaded.run.settings_snapshot) : await loadSettings(loaded.run.pay_date);
   } catch (e) {
     return <ErrorBox message={(e as Error).message} />;
   }

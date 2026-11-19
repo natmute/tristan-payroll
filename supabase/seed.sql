@@ -40,8 +40,9 @@ insert into deduction_types (code, label, sort_order) values
 on conflict (code) do nothing;
 
 -- Settings = defaultSettings from packages/payroll-engine/src/settings.ts.
--- Keep in sync with that file (the Settings page edits this row).
-insert into payroll_settings (id, settings) values (1, '{
+-- Keep in sync with that file. This is the first version; the Settings page adds later ones.
+insert into settings_versions (effective_from, reason, created_by, settings)
+select date '2020-01-01', 'Initial settings', 'Setup', '{
   "categories": {
     "government": {
       "standardHoursPerPeriod": 160,
@@ -70,9 +71,10 @@ insert into payroll_settings (id, settings) values (1, '{
   "proRataBasis": "calendar_days",
   "deductionsApplyToOvertime": true,
   "transferCommissionBps": 300,
-  "netChangeWarningBps": 1000
-}'::jsonb)
-on conflict (id) do nothing;
+  "netChangeWarningBps": 1000,
+  "leave": {"annualDays":15,"annualDaysLongService":21,"longServiceYears":5,"annualDaysSenior":25,"sickDays":25}
+}'::jsonb
+where not exists (select 1 from settings_versions);
 
 -- Employees. T001-T007 = sample sheet rows 1-7 (fictional names). T008 = starter for the pro-rata
 -- demo. X001-X002 = expat/contractor demo rows; their salaries are PLACEHOLDERS, not client figures.

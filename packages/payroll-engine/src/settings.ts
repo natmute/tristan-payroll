@@ -51,6 +51,18 @@ export interface PayrollSettings {
    * 1000 = 10%. TODO(client): confirm the threshold the CFO wants.
    */
   netChangeWarningBps: number;
+  /** Leave entitlements, in days. */
+  leave: LeaveSettings;
+}
+
+export interface LeaveSettings {
+  annualDays: number;
+  /** Annual days once someone has served `longServiceYears` full years. */
+  annualDaysLongService: number;
+  longServiceYears: number;
+  /** Heads of department, deputies and assistants. */
+  annualDaysSenior: number;
+  sickDays: number;
 }
 
 // All of these are editable on the Settings page; none are hard-coded elsewhere.
@@ -88,4 +100,11 @@ export const defaultSettings: PayrollSettings = {
   deductionsApplyToOvertime: true,
   transferCommissionBps: 300,
   netChangeWarningBps: 1000,
+  // TODO(client): which dates define the leave year, and are half days allowed? Entitlements are from the client's rules.
+  leave: { annualDays: 15, annualDaysLongService: 21, longServiceYears: 5, annualDaysSenior: 25, sickDays: 25 },
 };
+
+/** Older saved settings may lack newer fields. Fill the gaps from the defaults. */
+export function withDefaults(saved: Partial<PayrollSettings>): PayrollSettings {
+  return { ...defaultSettings, ...saved, leave: { ...defaultSettings.leave, ...(saved.leave ?? {}) } };
+}

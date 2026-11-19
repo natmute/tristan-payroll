@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { calculatePayslip, type Category, type PayrollSettings } from '@tristan/payroll-engine';
 import { db } from '@/lib/supabase';
+import { loadSettings } from '@/lib/payroll';
 import { CATEGORY_LABELS, fullName, gbp, ukDate } from '@/lib/format';
 import { StaffOnly } from '@/components/StaffOnly';
 import { ActionForm } from '@/components/ActionForm';
@@ -41,7 +42,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
       .select('id, type_code, amount, active, deduction_types(label, sort_order)').eq('employee_id', id).returns<Deduction[]>(),
     supabase.from('credit_purchases')
       .select('id, purchase_date, description, amount, paid, settled').eq('employee_id', id).order('purchase_date').returns<Credit[]>(),
-    supabase.from('payroll_settings').select('settings').eq('id', 1).single<{ settings: PayrollSettings }>(),
+    loadSettings().then((settings) => ({ data: { settings }, error: null })),
     // Transfer commission is added by the engine, so it is not offered as a manual deduction.
     supabase.from('deduction_types').select('code, label').neq('code', 'transfer_commission').order('sort_order'),
   ]);

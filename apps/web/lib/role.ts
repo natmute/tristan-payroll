@@ -28,6 +28,12 @@ export async function isStaff(): Promise<boolean> {
   return (await currentRole()) !== 'employee';
 }
 
+/** The demo employee when the Employee role is selected. Real login replaces this in the full build. */
+export async function currentEmployeeId(): Promise<string | null> {
+  const v = (await cookies()).get('demo_employee')?.value;
+  return v && /^[0-9a-f-]{36}$/i.test(v) ? v : null;
+}
+
 export async function currentRole(): Promise<Role> {
   const v = (await cookies()).get('demo_role')?.value;
   return ROLES.includes(v as Role) ? (v as Role) : 'admin';

@@ -13,6 +13,7 @@ export function ActionForm({
   resetOnSuccess = false,
   compact = false,
   successMessage,
+  id,
   children,
 }: {
   action: (formData: FormData) => Promise<Result>;
@@ -22,7 +23,9 @@ export function ActionForm({
   compact?: boolean;
   /** Shown after a save that does not leave the page, e.g. "Sent". */
   successMessage?: string;
-  children: React.ReactNode;
+  /** Lets inputs elsewhere on the page join this form with the HTML form attribute. */
+  id?: string;
+  children?: React.ReactNode;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -31,6 +34,7 @@ export function ActionForm({
 
   return (
     <form
+      id={id}
       ref={ref}
       onSubmit={(e) => {
         e.preventDefault();

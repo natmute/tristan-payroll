@@ -16,6 +16,7 @@ export type PayslipLine = {
 
 export type PayslipData = {
   lineId: string;
+  employeeId: string;
   runId: string;
   /** True until the run is finalised. The PDF says so. */
   draft: boolean;
@@ -100,7 +101,7 @@ export async function buildPayslip(lineId: string): Promise<PayslipData | null> 
     .map((p) => `${displayLabel(p.code, p.label)} ${pct(p.bps)}`);
 
   return {
-    lineId, runId: run.data.id, draft: run.data.status !== 'finalised', runStatus: run.data.status,
+    lineId, employeeId: line.employee_id, runId: run.data.id, draft: run.data.status !== 'finalised', runStatus: run.data.status,
     category, categoryLabel: CATEGORY_LABELS[category],
     employee: {
       name: `${emp.data.first_name} ${emp.data.last_name}`, no: emp.data.employee_no,

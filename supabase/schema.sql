@@ -259,6 +259,44 @@ end $$;
 revoke execute on function finalise_pay_run(uuid, text, text, timestamptz) from public, anon, authenticated;
 grant execute on function finalise_pay_run(uuid, text, text, timestamptz) to service_role;
 
+-- ---------------------------------------------------------------------------
+-- Settings versions. Rates are never edited in place: each change is a new version with an
+-- effective date, a reason and who made it. A run uses the version in force on its pay date,
+-- and keeps a copy of it (pay_runs.settings_snapshot).
+-- ---------------------------------------------------------------------------
+create table if not exists settings_versions (
+  id             uuid primary key default gen_random_uuid(),
+  effective_from date not null,
+  settings       jsonb not null,   -- the engine's PayrollSettings
+  reason         text not null,
+  created_by     text not null,
+  created_at     timestamptz not null default now()
+);
+create index if not exists settings_versions_effective_idx on settings_versions (effective_from desc, created_at desc);
+
+-- Move the earlier single-row settings table into the first version, then remove it.
+do $$ begin
+  if to_regclass('public.payroll_settings') is not null then
+    insert into settings_versions (effective_from, settings, reason, created_by)
+      select date '2020-01-01', settings, 'Initial settings', 'Setup' from payroll_settings
+      where not exists (select 1 from settings_versions);
+    drop table payroll_settings;
+  end if;
+end $$;
+
+-- Leave taken, entered by hand. Entitlements are worked out from settings and start dates, not stored.
+-- TODO(client): which dates define the leave year, and are half days allowed? Whole days for now.
+create table if not exists leave_balances (
+  employee_id  uuid primary key references employees(id) on delete cascade,
+  annual_taken int not null default 0 check (annual_taken >= 0),
+  sick_taken   int not null default 0 check (sick_taken >= 0),
+  updated_at   timestamptz not null default now()
+);
+
+alter table settings_versions enable row level security;
+alter table leave_balances    enable row level security;
+grant all on settings_versions, leave_balances to service_role;
+
 -- Private bucket for payslip PDFs (records kept 7 years).
 insert into storage.buckets (id, name, public)
 values ('payslips', 'payslips', false)

@@ -1,7 +1,7 @@
 'use server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { buildRun, checkRun, compareRuns, type Category } from '@tristan/payroll-engine';
+import { buildRun, checkRun, compareRuns, withDefaults, type Category } from '@tristan/payroll-engine';
 import { db } from '@/lib/supabase';
 import { actor, logAction } from '@/lib/audit';
 import { requireRole } from '@/lib/role';
@@ -32,7 +32,7 @@ async function assertNoBlockingErrors(id: string) {
   const loaded = await loadRun(id);
   if (!loaded) throw new FormError('This run no longer exists.');
   const previous = await loadPreviousRun(loaded.run);
-  const settings = loaded.run.settings_snapshot ?? (await loadSettings());
+  const settings = loaded.run.settings_snapshot ? withDefaults(loaded.run.settings_snapshot) : await loadSettings(loaded.run.pay_date);
   const lines = loaded.lines.map(toLine);
   const changes = previous ? compareRuns(lines, previous.lines.map(toLine), settings.netChangeWarningBps).changes : [];
   const { blocking } = checkRun(lines, changes);
@@ -62,7 +62,7 @@ export async function createRun(fd: FormData): Promise<ActionResult> {
     const { data: existing } = await dup;
     if (existing?.length) throw new FormError('A run for this category and pay date already exists. Open it from the Payroll list.');
 
-    const settings = await loadSettings();
+    const settings = await loadSettings(payDate); // the version in force on the pay date
     const employees = await loadEmployeesForRun(category as Category, departmentId, { start, end });
     let lines;
     try {
@@ -99,7 +99,7 @@ export async function recalculateRun(id: string): Promise<ActionResult> {
     const { run: r } = loaded;
     if (r.status !== 'draft') throw new FormError('Only a draft can be recalculated. Send it back to draft first.');
 
-    const settings = await loadSettings();
+    const settings = await loadSettings(r.pay_date);
     const period = { start: r.period_start, end: r.period_end };
     const lines = buildRun(await loadEmployeesForRun(r.category, r.department_id, period), period, settings);
     if (lines.length === 0) throw new FormError('No employees are due pay in this period.');

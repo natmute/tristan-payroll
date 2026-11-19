@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { Client } from 'pg';
-import { buildRun, type Category, type PayrollSettings, type RunEmployee } from '../packages/payroll-engine/src';
+import { buildRun, withDefaults, type Category, type RunEmployee } from '../packages/payroll-engine/src';
 
 const root = process.cwd();
 
@@ -39,10 +39,13 @@ const OFFICER = { role: 'payroll_officer', name: 'Payroll officer (demo)' };
 const ADMIN = { role: 'admin', name: 'Administrator (demo)' };
 
 async function seedHistory(c: Client) {
-  const settings = (await c.query('select settings from payroll_settings where id = 1')).rows[0]?.settings as PayrollSettings | undefined;
-  if (!settings) throw new Error('payroll_settings is empty. Run the schema and seed first.');
-
+  
   for (const h of HISTORY) {
+    // The settings version in force on the pay date, as the app would use.
+    const saved = (await c.query(
+      'select settings from settings_versions where effective_from <= $1 order by effective_from desc, created_at desc limit 1', [h.payDate])).rows[0]?.settings;
+    if (!saved) throw new Error('settings_versions is empty. Run the schema and seed first.');
+    const settings = withDefaults(saved);
     const exists = await c.query('select 1 from pay_runs where category = $1 and pay_date = $2 and department_id is null', [h.category, h.payDate]);
     if (exists.rowCount) { console.log(`${h.category} ${h.payDate}: already there, skipped`); continue; }
 
@@ -108,7 +111,7 @@ async function seedHistory(c: Client) {
 async function reset(c: Client) {
   console.log('Dropping all payroll tables...');
   await c.query(`drop table if exists payslips, pay_runs, credit_purchases, custom_deductions, employees, pay_grades,
-    departments, payroll_settings, deduction_types, category_pay_cycles, audit_log cascade`);
+    departments, payroll_settings, settings_versions, leave_balances, deduction_types, category_pay_cycles, audit_log cascade`);
   await c.query('drop function if exists finalise_pay_run(uuid, text, text, timestamptz)');
   await c.query('drop function if exists finalise_pay_run(uuid, text, text)');
   await c.query('drop function if exists lock_finalised_runs() cascade');

@@ -3,8 +3,10 @@ import {
   calculatePayslip, nextPayDate, type Category, type PayrollSettings,
 } from '@tristan/payroll-engine';
 import { db } from '@/lib/supabase';
+import { STATUS_LABELS, STATUS_TONES, loadSettings, type RunStatus } from '@/lib/payroll';
 import { fetchAll } from '@/lib/fetchAll';
 import { isStaff } from '@/lib/role';
+import { Portal } from './Portal';
 import { CATEGORY_LABELS, CYCLE_LABELS, gbp, ukDate } from '@/lib/format';
 import { Card, Chip, EmptyState, ErrorBox, PageTitle, Td, Th } from '@/components/ui';
 
@@ -17,14 +19,19 @@ type Emp = {
 type Ded = { employee_id: string; type_code: string; amount: number };
 type Credit = { employee_id: string; amount: number; paid: number };
 type Cycle = { category: Category; cycle: 'four_weekly' | 'monthly'; pay_day_of_month: number | null; anchor_pay_date: string | null };
-type Run = { id: string; category: Category; period_start: string; period_end: string; pay_date: string; status: string };
+type Run = {
+  id: string; category: Category; period_start: string; period_end: string; pay_date: string; status: RunStatus;
+  total_gross: number | null; total_net: number | null; payslips: { total_pay: number; net_pay: number }[];
+};
+type Finalised = { id: string; category: Category; pay_date: string; total_gross: number; total_deductions: number; total_net: number };
 
-function Kpi({ label, value, note, projected }: { label: string; value: string; note?: string; projected?: boolean }) {
+function Kpi({ label, value, note, projected, actual }: { label: string; value: string; note?: string; projected?: boolean; actual?: boolean }) {
   return (
     <Card>
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm text-slate-600">{label}</p>
         {projected && <Chip tone="blue">Projected</Chip>}
+        {actual && <Chip tone="green">Actual</Chip>}
       </div>
       <p className="mt-2 text-2xl font-semibold tabular-nums text-primary-900">{value}</p>
       {note && <p className="mt-1 text-xs text-slate-500">{note}</p>}
@@ -34,14 +41,7 @@ function Kpi({ label, value, note, projected }: { label: string; value: string; 
 
 export default async function Dashboard() {
   // Employees only ever see their own data. Their portal is built separately.
-  if (!(await isStaff())) {
-    return (
-      <>
-        <PageTitle title="My portal" />
-        <EmptyState>Your payslips, leave balances and deductions will appear here. The employee portal is not built yet.</EmptyState>
-      </>
-    );
-  }
+  if (!(await isStaff())) return <Portal />;
 
   const supabase = db();
   let emps: Emp[], deds: Ded[], credits: Credit[];
@@ -59,15 +59,18 @@ export default async function Dashboard() {
     return <ErrorBox message={(e as Error).message} />;
   }
 
-  const [settingsRow, types, cycles, depts, runs] = await Promise.all([
-    supabase.from('payroll_settings').select('settings').eq('id', 1).single<{ settings: PayrollSettings }>(),
+  const [settingsRow, types, cycles, depts, runs, finalised, inProgress] = await Promise.all([
+    loadSettings().then((settings) => ({ data: { settings }, error: null })),
     supabase.from('deduction_types').select('code, label'),
     supabase.from('category_pay_cycles').select('category, cycle, pay_day_of_month, anchor_pay_date').returns<Cycle[]>(),
     supabase.from('departments').select('id, name, category').order('name'),
-    supabase.from('pay_runs').select('id, category, period_start, period_end, pay_date, status')
+    supabase.from('pay_runs').select('id, category, period_start, period_end, pay_date, status, total_gross, total_net, payslips(total_pay, net_pay)')
       .order('pay_date', { ascending: false }).limit(5).returns<Run[]>(),
+    supabase.from('pay_runs').select('id, category, pay_date, total_gross, total_deductions, total_net')
+      .eq('status', 'finalised').is('department_id', null).order('pay_date', { ascending: false }).limit(10).returns<Finalised[]>(),
+    supabase.from('pay_runs').select('id', { count: 'exact', head: true }).neq('status', 'finalised'),
   ]);
-  const failed = settingsRow.error ?? types.error ?? cycles.error ?? depts.error ?? runs.error;
+  const failed = settingsRow.error ?? types.error ?? cycles.error ?? depts.error ?? runs.error ?? finalised.error ?? inProgress.error;
   if (failed || !settingsRow.data) return <ErrorBox message={failed?.message ?? 'Payroll settings are missing.'} />;
 
   const settings = settingsRow.data.settings;
@@ -100,15 +103,35 @@ export default async function Dashboard() {
   }
   const sum = (k: 'employees' | 'gross' | 'deductions' | 'net' | 'tax') => totals.government[k] + totals.expat_contractor[k];
 
+  // Actual figures: the latest finalised run of each category. Used when every category with staff has one.
+  const latest = (c: Category) => (finalised.data ?? []).find((r) => r.category === c);
+  const needed = (Object.keys(totals) as Category[]).filter((c) => totals[c].employees > 0);
+  const useActual = needed.length > 0 && needed.every((c) => latest(c));
+  let actualTax = 0;
+  if (useActual) {
+    const ids = needed.map((c) => latest(c)!.id);
+    const { data: slips } = await supabase.from('payslips').select('result').in('pay_run_id', ids).returns<{ result: { deductions: { code: string; amount: number }[] } }[]>();
+    for (const sl of slips ?? []) actualTax += sl.result.deductions.find((d) => d.code === 'tax')?.amount ?? 0;
+  }
+  const actual = useActual
+    ? {
+        gross: needed.reduce((n, c) => n + latest(c)!.total_gross, 0),
+        deductions: needed.reduce((n, c) => n + latest(c)!.total_deductions, 0),
+        net: needed.reduce((n, c) => n + latest(c)!.total_net, 0),
+        tax: actualTax,
+        label: needed.map((c) => `${CATEGORY_LABELS[c]} ${ukDate(latest(c)!.pay_date)}`).join(', '),
+      }
+    : null;
+
   // TODO(client): what counts as "needs attention" for the CFO? These are sensible defaults.
   const today = new Date().toISOString().slice(0, 10);
   const noEmail = emps.filter((e) => !e.email).length;
   const noGrade = emps.filter((e) => !e.pay_grade_id).length;
   const noSalary = emps.filter((e) => e.salary === 0).length;
   const withCredit = creditBy.size;
-  const awaitingApproval = (runs.data ?? []).filter((r) => r.status === 'in_review' || r.status === 'draft').length;
+  const awaitingApproval = inProgress.count ?? 0;
   const pending: { text: string; href: string }[] = [];
-  if (awaitingApproval) pending.push({ text: `${awaitingApproval} payroll run(s) not yet approved`, href: '#runs' });
+  if (awaitingApproval) pending.push({ text: `${awaitingApproval} payroll run(s) in progress, not yet finalised`, href: '/payroll' });
   if (noSalary) pending.push({ text: `${noSalary} employee(s) with no salary set`, href: '/employees' });
   if (noGrade) pending.push({ text: `${noGrade} employee(s) with no pay grade`, href: '/employees?grade=none' });
   if (noEmail) pending.push({ text: `${noEmail} employee(s) with no email: payslips must be downloaded and handed out`, href: '/employees?email=none' });
@@ -131,15 +154,16 @@ export default async function Dashboard() {
         <h2 id="kpis" className="sr-only">Key figures</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Kpi label="Employees" value={String(sum('employees'))} note="Active" />
-          <Kpi label="Gross payroll" value={gbp(sum('gross'))} projected />
-          <Kpi label="Total deductions" value={gbp(sum('deductions'))} projected />
-          <Kpi label="Net payroll" value={gbp(sum('net'))} projected />
-          <Kpi label="Tax collected" value={gbp(sum('tax'))} projected />
+          <Kpi label="Gross payroll" value={gbp(actual?.gross ?? sum('gross'))} projected={!actual} actual={!!actual} />
+          <Kpi label="Total deductions" value={gbp(actual?.deductions ?? sum('deductions'))} projected={!actual} actual={!!actual} />
+          <Kpi label="Net payroll" value={gbp(actual?.net ?? sum('net'))} projected={!actual} actual={!!actual} />
+          <Kpi label="Tax collected" value={gbp(actual?.tax ?? sum('tax'))} projected={!actual} actual={!!actual} />
           <Kpi label="Pending actions" value={String(pending.length)} note={pending.length ? 'See the list below' : 'Nothing needs attention'} />
         </div>
         <p className="mt-2 text-xs text-slate-500">
-          Projected figures cover one full pay period per category, from current salaries, deductions and settings.
-          They become actual figures once a payroll run is finalised.
+          {actual
+            ? `Actual figures from the latest finalised run of each category: ${actual.label}.`
+            : 'Projected figures cover one full pay period per category, from current salaries, deductions and settings. They become actual figures once a payroll run is finalised.'}
         </p>
       </section>
 
@@ -188,25 +212,26 @@ export default async function Dashboard() {
       <section aria-labelledby="runs">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 id="runs" className="text-lg font-semibold text-primary-900">Recent payroll runs</h2>
-          {/* The payroll run flow is the next thing to be built. */}
-          <span aria-disabled="true" title="Payroll runs are not built yet"
-            className="cursor-not-allowed rounded bg-slate-200 px-4 py-1.5 text-sm font-medium text-slate-500">
-            New payroll run (coming next)
-          </span>
+          <Link href="/payroll/new" className="rounded bg-primary-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-700">
+            New payroll run
+          </Link>
         </div>
         {!runs.data?.length ? (
-          <EmptyState>No payroll runs yet. Finalised runs will be listed here.</EmptyState>
+          <EmptyState>No payroll runs yet. Start one with the button above.</EmptyState>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
             <table className="min-w-full text-sm">
-              <thead><tr><Th>Period</Th><Th>Category</Th><Th>Pay date</Th><Th>Status</Th></tr></thead>
+              <thead><tr><Th>Pay date</Th><Th>Category</Th><Th>Period</Th><Th right>Employees</Th><Th right>Gross</Th><Th right>Net</Th><Th>Status</Th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {runs.data.map((r) => (
                   <tr key={r.id}>
-                    <Td>{ukDate(r.period_start)} to {ukDate(r.period_end)}</Td>
+                    <Td><Link href={`/payroll/${r.id}`} className="font-medium text-primary-700 hover:underline">{ukDate(r.pay_date)}</Link></Td>
                     <Td>{CATEGORY_LABELS[r.category]}</Td>
-                    <Td>{ukDate(r.pay_date)}</Td>
-                    <Td><Chip tone={r.status === 'approved' ? 'green' : r.status === 'draft' ? 'grey' : 'amber'}>{r.status}</Chip></Td>
+                    <Td>{ukDate(r.period_start)} to {ukDate(r.period_end)}</Td>
+                    <Td right>{r.payslips.length}</Td>
+                    <Td right>{gbp(r.total_gross ?? r.payslips.reduce((n, p) => n + p.total_pay, 0))}</Td>
+                    <Td right>{gbp(r.total_net ?? r.payslips.reduce((n, p) => n + p.net_pay, 0))}</Td>
+                    <Td><Chip tone={STATUS_TONES[r.status]}>{STATUS_LABELS[r.status]}</Chip></Td>
                   </tr>
                 ))}
               </tbody>

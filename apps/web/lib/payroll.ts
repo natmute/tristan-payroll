@@ -1,4 +1,5 @@
 import 'server-only';
+import { withDefaults } from '@tristan/payroll-engine';
 import type {
   Category, EmployeeInput, PayrollSettings, PayslipResult, RunEmployee, RunLine, Period,
 } from '@tristan/payroll-engine';
@@ -33,10 +34,15 @@ export const STATUS_TONES: Record<RunStatus, 'grey' | 'amber' | 'blue' | 'green'
 
 export const toLine = (l: LineRow): RunLine => ({ employeeId: l.employee_id, input: l.inputs, result: l.result });
 
-export async function loadSettings(): Promise<PayrollSettings> {
-  const { data, error } = await db().from('payroll_settings').select('settings').eq('id', 1).single<{ settings: PayrollSettings }>();
-  if (error || !data) throw new Error(error?.message ?? 'Payroll settings are missing.');
-  return data.settings;
+/** The settings version in force on `forDate` (default today). Changes apply from their effective date onwards. */
+export async function loadSettings(forDate: string = new Date().toISOString().slice(0, 10)): Promise<PayrollSettings> {
+  const { data, error } = await db().from('settings_versions').select('settings')
+    .lte('effective_from', forDate)
+    .order('effective_from', { ascending: false }).order('created_at', { ascending: false })
+    .limit(1).maybeSingle<{ settings: Partial<PayrollSettings> }>();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('No payroll settings are in force on ' + forDate + '.');
+  return withDefaults(data.settings);
 }
 
 /** Everyone who could be paid in this period, with their recurring deductions and credit balance. */

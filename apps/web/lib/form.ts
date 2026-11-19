@@ -29,6 +29,28 @@ export function pence(raw: string, label: string, opts: { allowZero?: boolean } 
   return value;
 }
 
+/**
+ * Decimal text to basis points with integer maths only.
+ * scale 100:   a percentage, "7.5" -> 750.
+ * scale 10000: a multiplier,  "1.5" -> 15000.
+ * Up to two decimal places. `max` is in basis points.
+ */
+export function scaled(raw: string, scale: 100 | 10000, label: string, max: number): number {
+  const m = /^(\d{1,3})(?:\.(\d{1,2}))?$/.exec(raw.replace(/[%x\s]/gi, ''));
+  if (!m) throw new FormError(`${label} must be a number like ${scale === 100 ? '7.5' : '1.5'}.`);
+  const value = parseInt(m[1], 10) * scale + parseInt((m[2] ?? '0').padEnd(2, '0'), 10) * (scale / 100);
+  if (value > max) throw new FormError(`${label} is too high.`);
+  return value;
+}
+
+/** A whole number within a range. */
+export function whole(raw: string, label: string, min: number, max: number): number {
+  if (!/^\d{1,4}$/.test(raw.trim())) throw new FormError(`${label} must be a whole number.`);
+  const n = parseInt(raw, 10);
+  if (n < min || n > max) throw new FormError(`${label} must be between ${min} and ${max}.`);
+  return n;
+}
+
 /** "2026-11-18" only. Rejects impossible dates such as 2026-02-31. */
 export function isoDate(raw: string, label: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
