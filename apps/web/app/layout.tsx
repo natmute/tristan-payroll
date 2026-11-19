@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   description: 'Government of Tristan da Cunha payroll. Prototype with demo data.',
 };
 
+// Server actions and pages may take a few seconds on a slow link. Allow up to 30s on hosts that cap run time.
+export const maxDuration = 30;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-GB">

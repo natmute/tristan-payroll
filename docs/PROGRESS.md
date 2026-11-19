@@ -1,6 +1,6 @@
 # Progress and handover notes
 
-Last updated: Thu 19 Nov 2026. Demo: Fri 20 Nov 2026.
+Last updated: Thu 19 Nov 2026 (end of Thursday's session). Demo: Fri 20 Nov 2026.
 The rules, conventions and open questions live in `CLAUDE.md`. This file records **where the build stands**.
 
 ## How to run it
@@ -11,7 +11,7 @@ The rules, conventions and open questions live in `CLAUDE.md`. This file records
    The password in `DATABASE_URL` must **not** be wrapped in the template's square brackets.
 3. In the Supabase SQL Editor, run `supabase/schema.sql`, then `supabase/seed.sql`. Both are safe to re-run.
 4. `npm run dev`, then open http://localhost:3000.
-5. `npm test` runs the engine tests (67 at the time of writing).
+5. `npm test` runs the engine tests (75 at the time of writing).
 6. `npm run db:history` adds the two finalised October demo runs (safe to re-run, adds only).
    `npm run db:reset` wipes the database and re-seeds everything, including that history. It deletes all data in the
    project named in `.env.local`, so use it on the demo database only. **It has not been run yet**: the automated
@@ -47,7 +47,14 @@ Supabase project region is eu-west-1 (Ireland). Hosting must be UK/EU. See the d
   The logo is a neutral placeholder. Tax-year-to-date figures are not included.
 - Demo history: two finalised runs (Government 19 Oct, Expats 20 Oct) generated with the engine. The 16 Nov Government run
   compares against the October one (flags one salary change and one new starter).
-- Audit log rows are written for every change. There is no screen to view them yet.
+- Tax & Deduction Settings (`/settings`): every change is a new version with an effective date and a reason. A run uses the version in force
+  on its pay date and keeps a copy. Admins edit, payroll officers view. Settings that still depend on a client answer carry a
+  "needs client confirmation" tag. Leave entitlements are settings too.
+- Audit Log (`/audit`, admin only): filter by area, who and date; shows before/after and settings changes in plain English. Role switches are logged.
+- Employee portal: latest net pay, next pay date, leave left, payslip history with PDF, deduction history. Employees see only their own
+  finalised data (other people's payslips are 404/403). The header gains an employee picker when the Employee role is chosen.
+- Leave (`/leave`): entitlements from settings and start dates; taken is entered by hand (admin). No requests or approvals.
+- Demo access gate: set `DEMO_ACCESS_CODE` and every page asks for it first (the prototype has no login). See `docs/DEPLOY.md`.
 - Every database call has a timeout; reads retry; slow calls are logged (Starlink can stall).
 
 ## Status against the day plan
@@ -60,28 +67,29 @@ Supabase project region is eu-west-1 (Ireland). Hosting must be UK/EU. See the d
 | Wed | Credit purchases | Done (record, deduct on finalise, part payments) |
 | Wed | Expat rules | Done (engine, seeded 20 Oct run, expat payslip checked in the browser) |
 | Wed | Payslip PDF | Done (screen, PDF, print, stubbed resend) |
-| Thu | Settings page with versioning, audit log screen, employee portal, leave, polish, Vercel deploy | Not started |
+| Thu | Settings page with versioning | Done |
+| Thu | Audit log screen | Done |
+| Thu | Employee portal and leave display | Done |
+| Thu | Dashboard (actual figures, working New run button) | Done |
+| Thu | Vercel deploy | **Prepared, not deployed.** Needs a decision on which account and the access code. See `docs/DEPLOY.md` |
 | Fri | Buffer and rehearsal | |
 
 ## Not built yet, in the order I would do it
 
-1. **Tax & Deduction Settings** page with effective dates, reasons and versions (admin edits a rate, it is logged, applies to future runs).
-2. **Audit Log** screen (the rows already exist; filter by who, when, action).
-3. **Employee portal** (own payslips with PDF, leave balances, deduction history) and **Leave** display. The PDF route
-   currently returns 403 for the Employee role. The portal needs an "own payslips only" check.
-4. **Dashboard**: use finalised-run actuals for the KPIs now that finalised runs exist, and make "New payroll run" a real button
-   (it is still greyed out and says "coming next").
-5. **Overtime entry** on the review step. The engine supports it. There is no screen to enter hours.
-6. **Payment summary**, printable, with an optional signature column.
-7. **Correction runs.** Today a second run for the same category and pay date is refused, so a finalised mistake cannot yet be corrected.
-8. **Deploy to Vercel** with env vars documented. Hosting and domain must end up in the Government's name.
-9. Sidebar layout (the kickoff prompt asked for one; we kept the top header on request).
+1. **Deploy to Vercel** (guide in `docs/DEPLOY.md`).
+2. **Overtime entry** on the review step. The engine supports it. There is no screen to enter hours.
+3. **Payment summary**, printable, with an optional signature column.
+4. **Correction runs.** Today a second run for the same category and pay date is refused, so a finalised mistake cannot yet be corrected.
+5. **Tax-year-to-date** figures on payslips (tax year starts 1 December).
+6. Sidebar layout (the kickoff prompt asked for one; we kept the top header on request).
+7. Move the test scripts into the repo (see below), and run `npm run db:reset` once to confirm it works.
 
 ## Test tooling is not in the repo
 
 The browser and database tests used during the build live in a temporary folder outside the repo, and may be cleared.
 They covered: editing flows (23 checks), the payroll run flow (34 checks), the payslip and PDF flow (31 checks, including
-reading the text back out of the generated PDF), and the database lock and finalise function (12 checks).
+reading the text back out of the generated PDF), settings, audit, portal, leave and dashboard (63 checks, including a scan
+of every staff page for duplicate ids), and the database lock and finalise function (12 checks).
 They need `playwright-core` driving Chrome, and `pg`. Worth moving into a `scripts/` or `tests/e2e/` folder before the full build.
 Those scripts create their own test rows and remove them afterwards. To remove the lock triggers for cleanup they run
 `alter table ... disable trigger` and always re-enable it.
@@ -96,6 +104,10 @@ Those scripts create their own test rows and remove them afterwards. To remove t
 
 ## Known rough edges
 
+- **Stray audit rows.** Six test rows from 19 Nov remain in the audit log (4 role switches, plus the create and delete of a rehearsal draft run).
+  The database refused to let me delete audit rows, which is correct. Remove them in the Supabase SQL editor if you want a clean demo log:
+  `delete from audit_log where at >= '2026-11-19' and action in ('role.switch','run.create','run.delete');`
+- The Employee role currently has no way to open staff payslip pages (by design). Real login replaces the demo employee picker in the full build.
 - `npm audit` reports issues in build-time tooling (Vitest/Vite/esbuild, PostCSS inside Next). None handle user input. Revisit at deploy.
 - First page load after a rebuild can take a few seconds (Supabase round trips are 300-900 ms from the dev machine).
 - Dashboard figures are projections until a run is finalised, and say so.
