@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { db } from '@/lib/supabase';
-import { gbp } from '@/lib/format';
+import { dateTimeGmt, gbp } from '@/lib/format';
 import { StaffOnly } from '@/components/StaffOnly';
 import { AdminOnly } from '@/components/AdminOnly';
 import { Card, Chip, EmptyState, ErrorBox, PageTitle, Td, Th } from '@/components/ui';
@@ -12,14 +12,6 @@ type Row = { id: string; at: string; actor_role: string; actor_name: string; act
 
 const ROLE_LABELS: Record<string, string> = { admin: 'Administrator', payroll_officer: 'Payroll officer', employee: 'Employee' };
 const MONEY_KEYS = new Set(['salary', 'allowance', 'amount', 'paid']);
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-// Tristan da Cunha is on GMT, so UTC is the local time.
-function when(iso: string) {
-  const d = new Date(iso);
-  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
-}
-
 function show(key: string, v: unknown): string {
   if (typeof v === 'number' && MONEY_KEYS.has(key)) return gbp(v);
   if (v === null || v === undefined) return 'none';
@@ -108,7 +100,7 @@ export default async function AuditPage({
                 <tbody className="divide-y divide-slate-100">
                   {data.map((r) => (
                     <tr key={r.id} className="align-top">
-                      <Td className="whitespace-nowrap">{when(r.at)}</Td>
+                      <Td className="whitespace-nowrap">{dateTimeGmt(r.at)}</Td>
                       <Td>{r.actor_name}<span className="block text-xs text-slate-500">{ROLE_LABELS[r.actor_role] ?? r.actor_role}</span></Td>
                       <Td><Chip tone="blue">{r.action}</Chip></Td>
                       <Td><Detail d={r.detail} /></Td>

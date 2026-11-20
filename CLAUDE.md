@@ -104,6 +104,7 @@ How does a pay period relate to the pay date? Assumed: the period ends on the pa
 What net-pay change against the previous run should be flagged? Setting netChangeWarningBps, default 1000 (10%).
 Working-days pro-rata: are public holidays excluded? Currently only weekends are (setting proRataBasis = working_days).
 What counts as "needs attention" on the CFO's dashboard? The current list is a sensible default.
+What should each role see first on its dashboard? Assumed: the Administrator (approver) sees approvals, finance figures, settings and activity; the Payroll officer sees next pay dates, their own runs and data to fix; the Employee sees their own portal.
 Data residency: where does the Government want data held, and where does the Starlink traffic exit? The Supabase project is in eu-west-1 (Ireland). The region cannot be changed later without a migration.
 The salary sheet header has "S/V 9". What is it? Not modelled until the client explains.
 On the salary sheet, employee 4's row is marked "CREDIT" in the cash column. What does that mean (for example, paid by credit instead of cash)? Not modelled.

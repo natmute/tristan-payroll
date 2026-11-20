@@ -36,7 +36,10 @@ Supabase project region is eu-west-1 (Ireland). Hosting must be UK/EU. See the d
 
 **App** (`apps/web`, Next.js + Tailwind, blue theme; the "Prototype, demo data" banner was removed on 20 Nov 2026)
 - Role switcher (Administrator, Payroll officer, Employee) in the header. Employees see no staff screens.
-- Dashboard: KPIs (projected until a run is finalised), pending actions, by-category table, recent runs, departments.
+- Dashboard (a different page for each role): the Administrator (approver) sees what is waiting for approval or finalising first, then the finance
+  figures (including deductions and tax collected), settings in force or scheduled, recent activity and data to fix. The Payroll officer sees the next
+  pay dates with a Start a run button, their own runs in progress and what to fix before the next run, with headcount and pay figures only.
+  The Employee sees their own portal. (Earlier line follows.) Dashboard: KPIs (projected until a run is finalised), pending actions, by-category table, recent runs, departments.
 - Employees: list with filters, detail page with a calculation preview, add and edit, recurring deductions, credit purchases.
 - Departments and Pay grades: list, add and edit (administrators only).
 - Payroll: list, set up, review (checks, comparison, lines, settings applied), approve, finalise, per-employee breakdown.
@@ -106,9 +109,10 @@ Those scripts create their own test rows and remove them afterwards. To remove t
 
 ## Known rough edges
 
-- **Stray audit rows.** Six test rows from 19 Nov remain in the audit log (4 role switches, plus the create and delete of a rehearsal draft run).
+- **Stray audit rows.** Test rows from 19 and 20 Nov remain in the audit log (4 role switches, plus the create and delete of a rehearsal draft run).
   The database refused to let me delete audit rows, which is correct. Remove them in the Supabase SQL editor if you want a clean demo log:
-  `delete from audit_log where at >= '2026-11-19' and action in ('role.switch','run.create','run.delete');`
+  `delete from audit_log where at >= '2026-11-19' and action in ('role.switch','run.create','run.delete','payslip.download');`
+  These show up under "Recent activity" on the Administrator dashboard, so clear them before a demo.
 - The Employee role currently has no way to open staff payslip pages (by design). Real login replaces the demo employee picker in the full build.
 - `npm audit` reports issues in build-time tooling (Vitest/Vite/esbuild, PostCSS inside Next). None handle user input. Revisit at deploy.
 - First page load after a rebuild can take a few seconds (Supabase round trips are 300-900 ms from the dev machine).

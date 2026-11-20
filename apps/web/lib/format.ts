@@ -32,6 +32,20 @@ export function signedPct(bps: number): string {
   return `${bps > 0 ? '+' : bps < 0 ? '-' : ''}${Math.floor(abs / 100)}${frac ? '.' + frac : ''}%`;
 }
 
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** A timestamp as "19 Nov 2026 14:05". Tristan da Cunha is on GMT, so UTC is the local time. */
+export function dateTimeGmt(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getUTCDate()} ${MONTHS_SHORT[d.getUTCMonth()]} ${d.getUTCFullYear()} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+}
+
+/** Whole days from one "YYYY-MM-DD" date to another (negative if it is in the past). */
+export function daysBetween(fromIso: string, toIso: string): number {
+  const t = (s: string) => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d); };
+  return Math.round((t(toIso) - t(fromIso)) / 86_400_000);
+}
+
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 /** "2026-11-16" -> "November 2026" */
