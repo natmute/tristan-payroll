@@ -30,7 +30,9 @@ Not needed on Vercel: `DATABASE_URL` (only the one-off setup scripts use it) and
 2. In Vercel: **Add New > Project**, import that repo.
 3. Set **Root Directory** to `apps/web`. Leave "Include source files outside of the Root Directory" switched **on**
    (the web app uses the engine in `packages/payroll-engine`).
-4. Framework is detected as Next.js. Leave the build and install commands as they are.
+4. Framework must be **Next.js** (`vercel.json` sets it). Leave the build and install commands as they are. If a deploy fails with
+   `STATIC_BUILD_NO_OUT_DIR` ("No Output Directory named public"), the project was created with the preset "Other":
+   in Project Settings > Build and Deployment, set Framework Preset to Next.js and clear any Output Directory override, then redeploy.
 5. Add the three environment variables above, for **Production** (and Preview if you use previews).
 6. Deploy. `apps/web/vercel.json` pins the functions to Dublin (`dub1`), next to the Supabase project (eu-west-1, Ireland).
 
