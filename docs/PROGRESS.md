@@ -35,7 +35,9 @@ Supabase project region is eu-west-1 (Ireland). Hosting must be UK/EU. See the d
 - Seed: fictional names only. T001-T007 are the sample sheet, T008 a starter, X001-X002 placeholder expats.
 
 **App** (`apps/web`, Next.js + Tailwind, blue theme; the "Prototype, demo data" banner was removed on 20 Nov 2026)
-- Role switcher (Administrator, Payroll officer, Employee) in the header. Employees see no staff screens.
+- Role switcher in the header: three buttons (Administrator, Payroll officer, Employee), one click each, the current role highlighted. Staff also get a
+  "Employee view for" picker. An Employee sees no picker and no list of colleagues, only their own name. A browser with no choice made starts as Administrator.
+  Employees see no staff screens.
 - Dashboard (a different page for each role): the Administrator (approver) sees what is waiting for approval or finalising first, then the finance
   figures (including deductions and tax collected), settings in force or scheduled, recent activity and data to fix. The Payroll officer sees the next
   pay dates with a Start a run button, their own runs in progress and what to fix before the next run, with headcount and pay figures only.
@@ -57,7 +59,8 @@ Supabase project region is eu-west-1 (Ireland). Hosting must be UK/EU. See the d
   on its pay date and keeps a copy. Admins edit, payroll officers view. Settings that still depend on a client answer carry a
   "needs client confirmation" tag. Leave entitlements are settings too.
 - Audit Log (`/audit`, admin only): filter by area, who and date; shows before/after and settings changes in plain English. Role switches are logged.
-- Employee portal: latest net pay, next pay date, leave left, payslip history with PDF, deduction history. Employees see only their own
+- Employee portal, laid out as tiles like other payroll self-service homes (title bar, summary, link to the detail): My Latest Payslip (with next pay date),
+  My Time Off (annual and sick, with meters), My Pension (what you pay and what the employer pays), My Pay History (with tax withheld), My Deductions. Employees see only their own
   finalised data (other people's payslips are 404/403). The header gains an employee picker when the Employee role is chosen.
 - Leave (`/leave`): entitlements from settings and start dates; taken is entered by hand (admin). No requests or approvals.
 - Demo access gate: set `DEMO_ACCESS_CODE` and every page asks for it first (the prototype has no login). See `docs/DEPLOY.md`.
