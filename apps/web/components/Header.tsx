@@ -30,7 +30,11 @@ export async function Header() {
   return (
     <header className="no-print bg-primary-800 text-white">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-        <Link href="/" className="font-semibold tracking-tight">Tristan da Cunha Payroll</Link>
+        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
+          {/* White badge so the coat of arms reads clearly on the navy header. Decorative: the name follows. */}
+          <span className="flex h-9 w-9 items-center justify-center rounded bg-white"><img src="/logo.png" alt="" width={26} height={28} className="h-7 w-auto" /></span>
+          Tristan da Cunha Payroll
+        </Link>
         <nav className="flex flex-wrap gap-4 text-sm">
           {NAV[role].map((n) => (
             <Link key={n.href} href={n.href} className="text-primary-100 hover:text-white">{n.label}</Link>

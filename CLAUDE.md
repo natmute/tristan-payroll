@@ -34,7 +34,7 @@ Scale: about 200 employees. About 6 staff run payroll day to day.
 Only 2 departments/categories (above). Government departments (e.g. Telecommunications) sit inside the Government category. The full department list and department codes are still awaited from Paul. Use clearly fake placeholder codes and do not invent real ones.
 Approver for each stage: the CFO. Post-handover technical administrator: the CFO and/or Finance manager.
 Payslips are emailed as a PDF attachment (not a portal link, not password-protected). Email sending is stubbed in the prototype. Employee email is optional: admins must be able to download a payslip PDF and hand it out when an employee has no email.
-Payslip logo and look: client will send separately. Use a neutral placeholder.
+Payslip logo: the Tristan da Cunha coat of arms (supplied by Datagrove Tech, in apps/web/public/logo.png, also embedded in apps/web/lib/logo.ts for the PDF). It is used on the payslip, the PDF, the header and the tab icon. TODO(client): confirm the coat of arms may be used on payslips, and whether a different payslip look will be supplied.
 Data protection: UK GDPR and the Data Protection Act 2018 apply to employee records. Hosting is UK/EU region. Data is encrypted at rest and in transit.
 Connectivity is Starlink. Keep pages light and tolerate slow or dropped connections.
 Roles: administrator, payroll officer, employee. Employees only ever see their own data.

@@ -18,8 +18,8 @@ export function PayslipView({ p }: { p: PayslipData }) {
     <Card className="mx-auto max-w-2xl">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
         <div className="flex items-center gap-3">
-          {/* TODO(client): the real logo will be sent by the client. Neutral placeholder for now. */}
-          <div aria-hidden="true" className="flex h-12 w-12 items-center justify-center bg-primary-900 text-sm font-semibold text-white">TDC</div>
+          {/* TODO(client): confirm the coat of arms may be used on payslips, and whether a different payslip look will be supplied. */}
+          <img src="/logo.png" alt="Tristan da Cunha coat of arms" width={44} height={48} className="h-12 w-auto" />
           <div>
             <h1 className="text-lg font-semibold text-primary-900">Government of Tristan da Cunha</h1>
             <p className="text-sm text-slate-600">Payslip</p>

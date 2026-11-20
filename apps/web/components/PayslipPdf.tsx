@@ -1,5 +1,6 @@
-import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
+import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import { gbp, ukDate } from '@/lib/format';
+import { LOGO_PNG_BASE64 } from '@/lib/logo';
 import type { PayslipData } from '@/lib/payslip';
 
 // The payslip PDF. Built from the same PayslipData as the screen. Built-in Helvetica only, so no font downloads.
@@ -8,8 +9,8 @@ const s = StyleSheet.create({
   page: { padding: 36, fontSize: 10, fontFamily: 'Helvetica', color: '#0f172a' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   brand: { flexDirection: 'row', alignItems: 'center' },
-  // TODO(client): the real logo and payslip look will be sent by the client. This is a neutral placeholder.
-  logo: { width: 38, height: 38, backgroundColor: NAVY, color: '#fff', fontSize: 11, textAlign: 'center', paddingTop: 13, marginRight: 10 },
+  // The coat of arms is 292 x 318, so 36 x 39 keeps its shape.
+  logo: { width: 36, height: 39, marginRight: 10 },
   title: { fontSize: 14, fontFamily: 'Helvetica-Bold', color: NAVY },
   subtitle: { fontSize: 9, color: '#475569' },
   draft: { backgroundColor: '#fef3c7', color: '#92400e', padding: 5, textAlign: 'center', marginBottom: 10, fontFamily: 'Helvetica-Bold' },
@@ -38,7 +39,7 @@ export function PayslipPdf({ data }: { data: PayslipData }) {
       <Page size="A4" style={s.page}>
         <View style={s.header}>
           <View style={s.brand}>
-            <Text style={s.logo}>TDC</Text>
+            <Image style={s.logo} src={`data:image/png;base64,${LOGO_PNG_BASE64}`} />
             <View>
               <Text style={s.title}>Government of Tristan da Cunha</Text>
               <Text style={s.subtitle}>Payslip</Text>

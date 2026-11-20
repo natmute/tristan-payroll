@@ -44,7 +44,7 @@ Supabase project region is eu-west-1 (Ireland). Hosting must be UK/EU. See the d
   Client line order, statutory lines always shown, transfers as one line with the commission shown on screen, employer pension
   as a separate contribution line, a DRAFT notice until the run is finalised. Download PDF, Print, and a stubbed
   "Resend email" (audit entry, nothing sent). Employees with no email get a "download and hand out" message.
-  The logo is a neutral placeholder. Tax-year-to-date figures are not included.
+  The Tristan da Cunha coat of arms is on the payslip, the PDF, the header and the tab icon (`apps/web/public/logo.png`; the PDF uses a copy embedded in `apps/web/lib/logo.ts`, so replace both if the logo changes). Tax-year-to-date figures are not included.
 - Demo history: two finalised runs (Government 19 Oct, Expats 20 Oct) generated with the engine. The 16 Nov Government run
   compares against the October one (flags one salary change and one new starter).
 - Tax & Deduction Settings (`/settings`): every change is a new version with an effective date and a reason. A run uses the version in force
