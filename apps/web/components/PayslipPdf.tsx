@@ -66,13 +66,19 @@ export function PayslipPdf({ data }: { data: PayslipData }) {
         )}
 
         <Text style={s.heading}>Earnings</Text>
-        {data.earnings.map((l) => <Line key={l.code} label={l.label} amount={l.amount} />)}
+        {data.earnings.map((l) => <Line key={l.code} label={l.detail ? `${l.label} (${l.detail})` : l.label} amount={l.amount} />)}
         <View style={s.total}><Text>Total</Text><Text>{gbp(data.total)}</Text></View>
 
         <Text style={s.heading}>Deductions</Text>
         {data.deductions.map((l) => <Line key={l.code} label={l.label} amount={l.amount} minus />)}
 
         <View style={s.net}><Text>Net pay</Text><Text>{gbp(data.net)}</Text></View>
+
+        <Text style={s.heading}>Year to date, tax year {data.ytd.taxYear}{data.draft ? ' (finalised payslips plus this one)' : ''}</Text>
+        <Line label="Total pay" amount={data.ytd.totals.gross} />
+        <Line label="Income tax" amount={data.ytd.totals.tax} />
+        <Line label="Pension (employee)" amount={data.ytd.totals.pension} />
+        <Line label="Net pay" amount={data.ytd.totals.net} />
 
         <Text style={s.note}>Employer pension contribution (paid by the employer, not deducted from you): {gbp(data.employerPension)}</Text>
         {data.creditCarriedForward > 0 && (

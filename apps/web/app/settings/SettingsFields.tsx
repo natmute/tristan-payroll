@@ -101,6 +101,16 @@ export function SettingsFields({ s }: { s: PayrollSettings }) {
             <Confirm />
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <label htmlFor="taxYearStartMonth" className="w-72">Tax year starts in</label>
+            <select id="taxYearStartMonth" name="taxYearStartMonth" defaultValue={s.taxYearStartMonth} className="rounded border border-slate-300 bg-white px-2 py-1">
+              {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
+                <option key={m} value={i + 1}>{m}</option>
+              ))}
+            </select>
+            <span className="text-xs text-slate-500">year-to-date totals on payslips restart then</span>
+            <Confirm />
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
             <Check name="deductionsApplyToOvertime" label="Tax, pension, community service and medical also apply to overtime pay" on={s.deductionsApplyToOvertime} />
             <Confirm />
           </div>

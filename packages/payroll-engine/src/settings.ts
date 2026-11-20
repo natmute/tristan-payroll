@@ -60,6 +60,12 @@ export interface PayrollSettings {
    * TODO(client): confirm they want every line on the PDF payslips that are emailed.
    */
   payslipShowAllLines: boolean;
+  /**
+   * The month the tax year starts, 1 to 12. The client's tax year runs December to November, so 12.
+   * Year-to-date totals on payslips restart from this month. The pay date decides which tax year a payslip is in.
+   * TODO(client): confirm the pay date (not the work period) decides the tax year.
+   */
+  taxYearStartMonth: number;
 }
 
 export interface LeaveSettings {
@@ -110,6 +116,7 @@ export const defaultSettings: PayrollSettings = {
   // TODO(client): which dates define the leave year, and are half days allowed? Entitlements are from the client's rules.
   leave: { annualDays: 15, annualDaysLongService: 21, longServiceYears: 5, annualDaysSenior: 25, sickDays: 25 },
   payslipShowAllLines: true,
+  taxYearStartMonth: 12,
 };
 
 /** Older saved settings may lack newer fields. Fill the gaps from the defaults. */

@@ -53,7 +53,7 @@ export function PayslipView({ p }: { p: PayslipData }) {
       <table className="mt-4 w-full text-sm">
         <tbody className="divide-y divide-slate-100">
           <tr><td colSpan={2} className="pt-2 text-xs font-semibold uppercase tracking-wide text-primary-900">Earnings</td></tr>
-          {p.earnings.map((l) => <tr key={l.code}><Td>{l.label}</Td><Td right>{gbp(l.amount)}</Td></tr>)}
+          {p.earnings.map((l) => <tr key={l.code}><Td>{l.label}{l.detail && <span className="block text-xs text-slate-500">{l.detail}</span>}</Td><Td right>{gbp(l.amount)}</Td></tr>)}
           <tr className="bg-slate-100 font-semibold"><Td>Total</Td><Td right>{gbp(p.total)}</Td></tr>
           <tr><td colSpan={2} className="pt-3 text-xs font-semibold uppercase tracking-wide text-primary-900">Deductions</td></tr>
           {p.deductions.map((l) => (
@@ -63,6 +63,18 @@ export function PayslipView({ p }: { p: PayslipData }) {
             </tr>
           ))}
           <tr className="bg-primary-900 text-base font-semibold text-white"><Td>Net pay</Td><Td right>{gbp(p.net)}</Td></tr>
+        </tbody>
+      </table>
+
+      <table className="mt-4 w-full text-sm" aria-label="Year to date">
+        <caption className="pb-1 text-left text-xs font-semibold uppercase tracking-wide text-primary-900">
+          Year to date, tax year {p.ytd.taxYear}{p.draft ? ' (finalised payslips plus this one)' : ''}
+        </caption>
+        <tbody className="divide-y divide-slate-100">
+          <tr><Td>Total pay</Td><Td right>{gbp(p.ytd.totals.gross)}</Td></tr>
+          <tr><Td>Income tax</Td><Td right>{gbp(p.ytd.totals.tax)}</Td></tr>
+          <tr><Td>Pension (employee)</Td><Td right>{gbp(p.ytd.totals.pension)}</Td></tr>
+          <tr><Td>Net pay</Td><Td right>{gbp(p.ytd.totals.net)}</Td></tr>
         </tbody>
       </table>
 

@@ -43,6 +43,7 @@ export function applyForm(base: PayrollSettings, fd: FormData): PayrollSettings 
   next.proRataBasis = basis;
   next.deductionsApplyToOvertime = checked(fd, 'deductionsApplyToOvertime');
   next.payslipShowAllLines = checked(fd, 'payslipShowAllLines');
+  next.taxYearStartMonth = whole(text(fd, 'taxYearStartMonth'), 'Tax year start month', 1, 12);
   next.transferCommissionBps = scaled(text(fd, 'transferCommission'), 100, 'Transfer commission', 10_000);
   next.netChangeWarningBps = scaled(text(fd, 'netChangeWarning'), 100, 'Net pay change warning', 100_000);
   next.leave = {
@@ -87,6 +88,7 @@ export function describeChanges(before: PayrollSettings, after: PayrollSettings)
   if (before.proRataBasis !== after.proRataBasis) out.push(`Part periods counted by ${before.proRataBasis === 'calendar_days' ? 'calendar' : 'working'} days to ${after.proRataBasis === 'calendar_days' ? 'calendar' : 'working'} days`);
   if (before.deductionsApplyToOvertime !== after.deductionsApplyToOvertime) out.push(`Deductions apply to overtime: ${onOff(before.deductionsApplyToOvertime)} to ${onOff(after.deductionsApplyToOvertime)}`);
   if (before.payslipShowAllLines !== after.payslipShowAllLines) out.push(`Payslips show every line: ${onOff(before.payslipShowAllLines)} to ${onOff(after.payslipShowAllLines)}`);
+  if (before.taxYearStartMonth !== after.taxYearStartMonth) out.push(`Tax year starts in month ${before.taxYearStartMonth} to month ${after.taxYearStartMonth}`);
   if (before.transferCommissionBps !== after.transferCommissionBps) out.push(`Transfer commission ${pct(before.transferCommissionBps)} to ${pct(after.transferCommissionBps)}`);
   if (before.netChangeWarningBps !== after.netChangeWarningBps) out.push(`Net pay change warning ${pct(before.netChangeWarningBps)} to ${pct(after.netChangeWarningBps)}`);
   const l: [keyof PayrollSettings['leave'], string][] = [

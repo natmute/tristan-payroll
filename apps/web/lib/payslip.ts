@@ -1,5 +1,5 @@
 import 'server-only';
-import type { Category, PayslipResult } from '@tristan/payroll-engine';
+import { sumYearToDate, taxYearOf, type Category, type PayslipResult, type YearToDate, type YtdSlip } from '@tristan/payroll-engine';
 import { db } from './supabase';
 import { CATEGORY_LABELS, gbp } from './format';
 import { deductionOrder, loadSettings, pct, type LineRow, type RunRow } from './payroll';
@@ -36,6 +36,12 @@ export type PayslipData = {
   creditCarriedForward: number;
   /** Rates that were applied, for the screen. */
   rates: string[];
+  /** Totals for the tax year up to and including this payslip: finalised payslips plus this one. */
+  ytd: { taxYear: string; totals: YearToDate };
+};
+
+const OVERTIME_KINDS: Record<string, string> = {
+  weekday: 'weekday', saturday: 'Saturday', sunday: 'Sunday', public_holiday: 'public holiday',
 };
 
 // "Medical tax" is the 4% statutory deduction. The custom "Medical" column is prescriptions. Never merge them.
@@ -79,7 +85,10 @@ export async function buildPayslip(lineId: string): Promise<PayslipData | null> 
     { code: 'salary', label: 'Salary', amount: r.salary },
     { code: 'allowance', label: 'Allowance', amount: r.allowance },
   ];
-  if (r.overtimePay > 0) earnings.push({ code: 'overtime', label: 'Overtime', amount: r.overtimePay });
+  if (r.overtimePay > 0) {
+    const detail = (line.inputs.overtime ?? []).filter((o) => o.hours > 0).map((o) => `${o.hours} h ${OVERTIME_KINDS[o.kind] ?? o.kind}`).join(', ');
+    earnings.push({ code: 'overtime', label: 'Overtime', amount: r.overtimePay, detail: detail || undefined });
+  }
 
   // Statutory lines first (always shown), then everything the engine produced, in the client's order.
   // With payslipShowAllLines on, every deduction type is listed too, even at 0.00, like the paper payslip.
@@ -102,6 +111,20 @@ export async function buildPayslip(lineId: string): Promise<PayslipData | null> 
     deductions = deductions.filter((d) => d.code !== 'transfer_commission');
   }
 
+  // Year to date: this employee's finalised payslips in the same tax year (by pay date), up to this one, plus this one.
+  const year = taxYearOf(run.data.pay_date, settings.taxYearStartMonth);
+  const { data: past, error: pastError } = await supabase.from('payslips')
+    .select('id, total_pay, total_deductions, net_pay, result, pay_runs!inner(pay_date, status)')
+    .eq('employee_id', line.employee_id).eq('pay_runs.status', 'finalised')
+    .gte('pay_runs.pay_date', year.start).lte('pay_runs.pay_date', run.data.pay_date)
+    .returns<{ id: string; total_pay: number; total_deductions: number; net_pay: number; result: PayslipResult }[]>();
+  if (pastError) throw new Error(pastError.message);
+  const amountOf = (res: PayslipResult, code: string) => res.deductions.find((d) => d.code === code)?.amount ?? 0;
+  const slipOf = (id: string, gross: number, ded: number, net: number, res: PayslipResult): YtdSlip =>
+    ({ gross, tax: amountOf(res, 'tax'), pension: amountOf(res, 'pension'), deductions: ded, net });
+  const earlier = (past ?? []).filter((x) => x.id !== lineId).map((x) => slipOf(x.id, x.total_pay, x.total_deductions, x.net_pay, x.result));
+  const ytdTotals = sumYearToDate([...earlier, slipOf(lineId, line.total_pay, line.total_deductions, line.net_pay, r)]);
+
   const rules = run.data.settings_snapshot?.categories[category];
   const rates = (rules?.percent ?? []).filter((p) => p.enabled)
     .map((p) => `${displayLabel(p.code, p.label)} ${pct(p.bps)}`);
@@ -117,5 +140,6 @@ export async function buildPayslip(lineId: string): Promise<PayslipData | null> 
     payDate: run.data.pay_date, periodStart: run.data.period_start, periodEnd: run.data.period_end,
     earnings, total: r.totalPay, deductions, net: r.netPay, employerPension: r.employerPension,
     partPeriod: line.inputs.proRata ?? null, creditCarriedForward: r.creditCarriedForward, rates,
+    ytd: { taxYear: year.label, totals: ytdTotals },
   };
 }
