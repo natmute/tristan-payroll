@@ -7,5 +7,10 @@ const nextConfig = {
   transpilePackages: ['@tristan/payroll-engine'],
   // react-pdf runs on the server only and is left out of the bundle.
   serverExternalPackages: ['@react-pdf/renderer'],
+  // pdfkit (inside react-pdf) loads its built-in font files (Helvetica.cjs and friends) with a dynamic require, which
+  // Next's file tracing cannot see. Without this, Vercel's PDF route fails with "Cannot find module .../Helvetica.cjs".
+  outputFileTracingIncludes: {
+    '/api/payslips/[lineId]/pdf': ['../../node_modules/pdfkit/js/**/*'],
+  },
 };
 export default nextConfig;

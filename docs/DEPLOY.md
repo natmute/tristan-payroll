@@ -62,6 +62,8 @@ vercel deploy --prod
 
 ## Things to know
 
+- **PDF on Vercel.** The PDF library loads its font files with a dynamic require that Next cannot trace. `next.config.mjs` lists them in
+  `outputFileTracingIncludes`. If a Vercel payslip download fails with "Cannot find module .../pdfkit/.../Helvetica.cjs", that setting is missing or the path moved.
 - **Same database as local.** A deployed copy and your laptop both write to the same Supabase project. Anything you do in the
   demo shows up everywhere. `npm run db:reset` wipes it back to the seed (and deletes everything in the project).
 - **Slow link.** Pages are server-rendered and light. Every database call has a timeout and reads retry. `maxDuration` is 30 seconds.
