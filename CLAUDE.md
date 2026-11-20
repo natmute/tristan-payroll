@@ -103,6 +103,8 @@ Ledger labels do not match between the salary sheet and the audit-trail template
 How does a pay period relate to the pay date? Assumed: the period ends on the pay date and starts the day after the previous pay date (28 days for four-weekly). Both dates are editable when setting up a run.
 What net-pay change against the previous run should be flagged? Setting netChangeWarningBps, default 1000 (10%).
 Working-days pro-rata: are public holidays excluded? Currently only weekends are (setting proRataBasis = working_days).
+Which date decides the tax year for year-to-date totals: the pay date (assumed) or the work period? Setting taxYearStartMonth, default 12 (December). The client's paper payslip has no year-to-date figures; they were added because the questionnaire gives a December to November tax year. Confirm they want them.
+Overtime: hours are typed in per run (weekday, Saturday, Sunday, public holiday). Does the client want a timesheet import or an approval step for overtime? A hard stop of 300 hours per period is only a typing-mistake guard, not a rule.
 What counts as "needs attention" on the CFO's dashboard? The current list is a sensible default.
 What should each role see first on its dashboard? Assumed: the Administrator (approver) sees approvals, finance figures, settings and activity; the Payroll officer sees next pay dates, their own runs and data to fix; the Employee sees their own portal.
 Data residency: where does the Government want data held, and where does the Starlink traffic exit? The Supabase project is in eu-west-1 (Ireland). The region cannot be changed later without a migration.

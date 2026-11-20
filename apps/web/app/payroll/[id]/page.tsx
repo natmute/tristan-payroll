@@ -163,7 +163,10 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
       <section className="mt-6" aria-labelledby="lines">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
           <h2 id="lines" className="text-lg font-semibold text-primary-900">Payslip lines</h2>
-          <Link href={`/payroll/${run.id}/payments`} className="text-sm text-primary-700 hover:underline">Payment summary and receipt slips</Link>
+          <div className="flex flex-wrap gap-4 text-sm">
+            <Link href={`/payroll/${run.id}/overtime`} className="text-primary-700 hover:underline">{run.status === 'draft' ? 'Enter overtime' : 'View overtime'}</Link>
+            <Link href={`/payroll/${run.id}/payments`} className="text-primary-700 hover:underline">Payment summary and receipt slips</Link>
+          </div>
         </div>
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="min-w-full text-sm">
@@ -230,7 +233,7 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
           <Card className="space-y-6">
             {run.status === 'draft' && (
               <>
-                <p className="text-sm text-slate-700">Review the checks and figures above. If an employee's details changed, recalculate. Then submit for approval.</p>
+                <p className="text-sm text-slate-700">Review the checks and figures above. Enter any overtime. If an employee's details changed, recalculate. Then submit for approval.</p>
                 <div className="flex flex-wrap items-start gap-4">
                   <ActionForm action={submitRun.bind(null, run.id)} submitLabel="Submit for approval" compact>{null}</ActionForm>
                   <ActionForm action={recalculateRun.bind(null, run.id)} submitLabel="Recalculate" compact>{null}</ActionForm>

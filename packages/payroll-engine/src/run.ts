@@ -175,6 +175,7 @@ export function compareRuns(current: RunLine[], previous: RunLine[], thresholdBp
     if (p.input.allowance !== c.input.allowance) reasons.push('allowance changed');
     if (dedKey(p) !== dedKey(c)) reasons.push('deductions changed');
     if (!!p.input.proRata !== !!c.input.proRata) reasons.push(c.input.proRata ? 'part period' : 'back to a full period');
+    if (p.result.overtimePay !== c.result.overtimePay) reasons.push('overtime changed');
     if (creditTaken(p) !== creditTaken(c)) reasons.push('credit repayment changed');
     if (p.input.exemptFromTaxCommunityMedical !== c.input.exemptFromTaxCommunityMedical) reasons.push('exemption changed');
     if (reasons.length === 0) reasons.push('rates or settings changed');

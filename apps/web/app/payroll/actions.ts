@@ -1,7 +1,7 @@
 'use server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { buildRun, checkRun, compareRuns, withDefaults, type Category } from '@tristan/payroll-engine';
+import { buildRun, calculatePayslip, checkRun, compareRuns, withDefaults, type Category, type OvertimeKind } from '@tristan/payroll-engine';
 import { db } from '@/lib/supabase';
 import { actor, logAction } from '@/lib/audit';
 import { requireRole } from '@/lib/role';
@@ -101,7 +101,10 @@ export async function recalculateRun(id: string): Promise<ActionResult> {
 
     const settings = await loadSettings(r.pay_date);
     const period = { start: r.period_start, end: r.period_end };
-    const lines = buildRun(await loadEmployeesForRun(r.category, r.department_id, period), period, settings);
+    // Overtime is typed in on the run, not stored on the employee, so keep it through a recalculation.
+    const keptOvertime = new Map(loaded.lines.map((l) => [l.employee_id, l.inputs.overtime]));
+    const employees = (await loadEmployeesForRun(r.category, r.department_id, period)).map((e) => ({ ...e, overtime: keptOvertime.get(e.id) }));
+    const lines = buildRun(employees, period, settings);
     if (lines.length === 0) throw new FormError('No employees are due pay in this period.');
 
     const supabase = db();
@@ -186,5 +189,56 @@ export async function resendPayslip(lineId: string): Promise<ActionResult> {
     if (data.draft) throw new FormError('Payslips are emailed once the run is finalised.');
     if (!data.employee.email) throw new FormError('This employee has no email address. Download the PDF and hand it out.');
     await logAction('payslip.resend', 'payslip', lineId, { employee_no: data.employee.no, pay_date: data.payDate, delivery: 'stub: nothing was sent' });
+  });
+}
+
+const OVERTIME_KINDS: OvertimeKind[] = ['weekday', 'saturday', 'sunday', 'public_holiday'];
+const MAX_OVERTIME_HOURS = 300; // a typo guard for one pay period, not a payroll rule
+
+/** Hours such as "7", "7.5" or "7.25". Blank means none. */
+function hoursOf(raw: string, who: string): number {
+  const t = raw.trim();
+  if (t === '') return 0;
+  if (!/^\d{1,3}(\.\d{1,2})?$/.test(t)) throw new FormError(`${who}: overtime hours must be a number such as 7 or 7.5.`);
+  const n = Number(t);
+  if (n > MAX_OVERTIME_HOURS) throw new FormError(`${who}: ${n} overtime hours in one pay period is too many. Check for a typing mistake.`);
+  return n;
+}
+
+/** Saves overtime hours for a whole draft run and recalculates each affected payslip with the run's own settings. */
+export async function saveOvertime(runId: string, fd: FormData): Promise<ActionResult> {
+  return run(async () => {
+    await requireRole([...STAFF]);
+    const loaded = await loadRun(runId);
+    if (!loaded) throw new FormError('This run no longer exists.');
+    const { run: r, lines, names } = loaded;
+    if (r.status !== 'draft') throw new FormError('Overtime can only be changed on a draft. Send the run back to draft first.');
+    const settings = r.settings_snapshot ? withDefaults(r.settings_snapshot) : await loadSettings(r.pay_date);
+
+    // Work out every change first, so a typing mistake on one row saves nothing.
+    const updates = lines.map((l) => {
+      const who = names.get(l.employee_id)?.name ?? 'An employee';
+      const overtime = OVERTIME_KINDS
+        .map((kind) => ({ kind, hours: hoursOf(text(fd, `ot_${l.id}_${kind}`), who) }))
+        .filter((o) => o.hours > 0);
+      const input = { ...l.inputs, overtime };
+      return { l, input, result: calculatePayslip(input, settings), changed: JSON.stringify(l.inputs.overtime ?? []) !== JSON.stringify(overtime) };
+    }).filter((u) => u.changed);
+    if (updates.length === 0) throw new FormError('No overtime hours were changed.');
+
+    const supabase = db();
+    for (const u of updates) {
+      const { error } = await supabase.from('payslips').update({
+        inputs: u.input, result: u.result,
+        total_pay: u.result.totalPay, total_deductions: u.result.totalDeductions, net_pay: u.result.netPay,
+        employer_pension: u.result.employerPension, credit_carried_forward: u.result.creditCarriedForward,
+      }).eq('id', u.l.id);
+      if (error) throw new FormError(`Could not save overtime: ${error.message}. Some rows may be saved; open the run and check.`);
+    }
+    await logAction('run.overtime', 'pay_run', runId, {
+      employees: updates.map((u) => ({ no: names.get(u.l.employee_id)?.no, overtime: u.input.overtime })),
+    });
+    refresh(runId);
+    revalidatePath(`/payroll/${runId}/overtime`);
   });
 }

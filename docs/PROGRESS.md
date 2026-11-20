@@ -22,6 +22,8 @@ Supabase project region is eu-west-1 (Ireland). Hosting must be UK/EU. See the d
 ## What is built
 
 **Payroll engine** (`packages/payroll-engine`, no dependencies, all in pence and basis points)
+- **Overtime entry** (Payroll > a draft run > Enter overtime): hours per employee for weekday, Saturday, Sunday and public holiday. Saving recalculates each payslip with the run's own settings. Hours survive Recalculate. Read-only once the run is submitted.
+- **Year to date** on every payslip, screen and PDF: total pay, income tax, employee pension and net pay for the tax year (setting `taxYearStartMonth`, default December), from the employee's finalised payslips up to and including this one. On a draft it adds this payslip to the finalised ones.
 - Payslip calculation, overtime, part-period pay, credit cap and carry-forward, expat rule set.
 - `buildRun` (who is in a period, starters and leavers by days worked), `checkRun` (blocking errors and warnings),
   `compareRuns` (totals and flagged net changes with reasons), `nextPayDate` and `payDatesAround`.
@@ -50,7 +52,7 @@ Supabase project region is eu-west-1 (Ireland). Hosting must be UK/EU. See the d
   as a separate contribution line, a DRAFT notice until the run is finalised. Download PDF, Print, and a stubbed
   "Resend email" (audit entry, nothing sent). Employees with no email get a "download and hand out" message.
   Payslips list every deduction line even at 0.00, like the client's paper payslip (setting `payslipShowAllLines`, on by default; turn it off in Settings to show only lines that apply).
-  The Tristan da Cunha coat of arms is on the payslip, the PDF, the header and the tab icon (`apps/web/public/logo.png`; the PDF uses a copy embedded in `apps/web/lib/logo.ts`, so replace both if the logo changes). Tax-year-to-date figures are not included.
+  The Tristan da Cunha coat of arms is on the payslip, the PDF, the header and the tab icon (`apps/web/public/logo.png`; the PDF uses a copy embedded in `apps/web/lib/logo.ts`, so replace both if the logo changes).
 - Payment summary and receipt slips (`/payroll/<run>/payments`): a printable list of net pay per employee, or one receipt slip each in the paper format
   (Name, Date, "No.1 Telecommunications", Signature line, Total). Signature on or off. Linked from the run page.
 - Demo history: two finalised runs (Government 19 Oct, Expats 20 Oct) generated with the engine. The 16 Nov Government run
@@ -86,9 +88,7 @@ Supabase project region is eu-west-1 (Ireland). Hosting must be UK/EU. See the d
 ## Not built yet, in the order I would do it
 
 1. **Deploy to Vercel** (guide in `docs/DEPLOY.md`).
-2. **Overtime entry** on the review step. The engine supports it. There is no screen to enter hours.
 3. **Correction runs.** Today a second run for the same category and pay date is refused, so a finalised mistake cannot yet be corrected.
-4. **Tax-year-to-date** figures on payslips (tax year starts 1 December).
 5. Sidebar layout (the kickoff prompt asked for one; we kept the top header on request).
 6. Move the test scripts into the repo (see below), and run `npm run db:reset` once to confirm it works.
 
@@ -114,7 +114,7 @@ Those scripts create their own test rows and remove them afterwards. To remove t
 
 - **Stray audit rows.** Test rows from 19 and 20 Nov remain in the audit log (4 role switches, plus the create and delete of a rehearsal draft run).
   The database refused to let me delete audit rows, which is correct. Remove them in the Supabase SQL editor if you want a clean demo log:
-  `delete from audit_log where at >= '2026-11-19' and action in ('role.switch','run.create','run.delete','payslip.download');`
+  `delete from audit_log where at >= '2026-11-19' and action in ('role.switch','run.create','run.delete','run.overtime','payslip.download');`
   These show up under "Recent activity" on the Administrator dashboard, so clear them before a demo.
 - The Employee role currently has no way to open staff payslip pages (by design). Real login replaces the demo employee picker in the full build.
 - `npm audit` reports issues in build-time tooling (Vitest/Vite/esbuild, PostCSS inside Next). None handle user input. Revisit at deploy.

@@ -14,6 +14,7 @@ export function ActionForm({
   compact = false,
   successMessage,
   id,
+  hideSubmit = false,
   children,
 }: {
   action: (formData: FormData) => Promise<Result>;
@@ -25,6 +26,8 @@ export function ActionForm({
   successMessage?: string;
   /** Lets inputs elsewhere on the page join this form with the HTML form attribute. */
   id?: string;
+  /** Hides the button, for a read-only view of the same form. */
+  hideSubmit?: boolean;
   children?: React.ReactNode;
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +65,7 @@ export function ActionForm({
       {error && (
         <p role="alert" className="mt-3 rounded border border-red-300 bg-red-50 p-2 text-sm text-red-800">{error}</p>
       )}
-      <div className={`flex items-center gap-3 ${compact ? 'mt-2' : 'mt-5'}`}>
+      {!hideSubmit && <div className={`flex items-center gap-3 ${compact ? 'mt-2' : 'mt-5'}`}>
         <button
           disabled={pending}
           className="rounded bg-primary-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-60"
@@ -70,7 +73,7 @@ export function ActionForm({
           {pending ? 'Saving...' : submitLabel}
         </button>
         {cancelHref && <Link href={cancelHref} className="text-sm text-primary-700 hover:underline">Cancel</Link>}
-      </div>
+      </div>}
     </form>
   );
 }
