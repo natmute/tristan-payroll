@@ -14,7 +14,7 @@ Rates are basis points (13% = 1300, 7.5% = 750). No float rates.
 Each percentage deduction is calculated separately on total pay and rounded to the nearest penny, half-up (money.ts).
 Never invent a payroll rule. If something is unclear, make it a setting, choose a safe default, and leave // TODO(client): <question> in the code. Also add it to the list below.
 All business rules are editable settings (PayrollSettings), never hard-coded in UI or DB code.
-Every page shows the "Prototype, demo data" banner. Seed data uses fictional names only.
+The "Prototype, demo data" banner and payslip footer were removed on 20 Nov 2026 at the request of Datagrove Tech. Seed data still uses fictional names only, so take care when showing this to anyone who might mistake it for live data.
 Small steps, one commit per step, clear messages.
 UI: clean and professional, blue primary colour.
 Confidentiality: the repo stays private. Never commit the client's real spreadsheets, payslips or employee data. Use only the anonymised sample figures below, with fictional names.

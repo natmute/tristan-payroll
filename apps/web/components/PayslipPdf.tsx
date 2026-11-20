@@ -22,7 +22,6 @@ const s = StyleSheet.create({
   heading: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: NAVY, marginTop: 8, marginBottom: 2 },
   net: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: NAVY, color: '#fff', padding: 8, marginTop: 10, fontSize: 13, fontFamily: 'Helvetica-Bold' },
   note: { fontSize: 8, color: '#475569', marginTop: 6 },
-  footer: { position: 'absolute', bottom: 22, left: 36, right: 36, textAlign: 'center', fontSize: 8, color: '#92400e' },
 });
 
 const Line = ({ label, amount, minus }: { label: string; amount: number; minus?: boolean }) => (
@@ -80,7 +79,6 @@ export function PayslipPdf({ data }: { data: PayslipData }) {
           <Text style={s.note}>Credit balance carried forward to the next pay: {gbp(data.creditCarriedForward)}</Text>
         )}
 
-        <Text style={s.footer} fixed>Prototype, demo data</Text>
       </Page>
     </Document>
   );

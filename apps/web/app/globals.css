@@ -4,7 +4,7 @@
 
 body { @apply bg-slate-50 text-slate-900 antialiased; }
 
-/* Printing a payslip: hide navigation and buttons. The prototype banner stays. */
+/* Printing a payslip: hide navigation and buttons. */
 @media print {
   .no-print { display: none !important; }
   body { background: #fff; }

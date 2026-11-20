@@ -34,7 +34,7 @@ Supabase project region is eu-west-1 (Ireland). Hosting must be UK/EU. See the d
 - A finalised run and its payslips are locked by database triggers. `finalise_pay_run()` finalises in one transaction.
 - Seed: fictional names only. T001-T007 are the sample sheet, T008 a starter, X001-X002 placeholder expats.
 
-**App** (`apps/web`, Next.js + Tailwind, blue theme, "Prototype, demo data" banner on every page)
+**App** (`apps/web`, Next.js + Tailwind, blue theme; the "Prototype, demo data" banner was removed on 20 Nov 2026)
 - Role switcher (Administrator, Payroll officer, Employee) in the header. Employees see no staff screens.
 - Dashboard: KPIs (projected until a run is finalised), pending actions, by-category table, recent runs, departments.
 - Employees: list with filters, detail page with a calculation preview, add and edit, recurring deductions, credit purchases.
