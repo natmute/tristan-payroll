@@ -105,6 +105,11 @@ What net-pay change against the previous run should be flagged? Setting netChang
 Working-days pro-rata: are public holidays excluded? Currently only weekends are (setting proRataBasis = working_days).
 What counts as "needs attention" on the CFO's dashboard? The current list is a sensible default.
 Data residency: where does the Government want data held, and where does the Starlink traffic exit? The Supabase project is in eu-west-1 (Ireland). The region cannot be changed later without a migration.
+The salary sheet header has "S/V 9". What is it? Not modelled until the client explains.
+On the salary sheet, employee 4's row is marked "CREDIT" in the cash column. What does that mean (for example, paid by credit instead of cash)? Not modelled.
+The paper payslip labels the net line "Sub.Total". Should the payslip and PDF use that wording instead of "Net pay"? The prototype uses "Net pay".
+Should the emailed PDF payslip list every deduction line even at 0.00, as the paper payslip does? Setting payslipShowAllLines, default on.
+Do they want to keep the signed receipt slips? The payment summary and receipt slips have a signature on/off option, default on.
 Day plan (tracked)
 [x] Mon: scaffold, CLAUDE.md, engine with passing tests
 [x] Tue: Supabase schema, seed, employees, departments, grades

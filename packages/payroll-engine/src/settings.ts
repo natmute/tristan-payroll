@@ -53,6 +53,13 @@ export interface PayrollSettings {
   netChangeWarningBps: number;
   /** Leave entitlements, in days. */
   leave: LeaveSettings;
+  /**
+   * Payslips list every deduction line, even at 0.00, as the client's current paper payslip does.
+   * Off: only lines that apply to the employee are shown (statutory lines always are).
+   * Presentation only. It never changes an amount.
+   * TODO(client): confirm they want every line on the PDF payslips that are emailed.
+   */
+  payslipShowAllLines: boolean;
 }
 
 export interface LeaveSettings {
@@ -102,6 +109,7 @@ export const defaultSettings: PayrollSettings = {
   netChangeWarningBps: 1000,
   // TODO(client): which dates define the leave year, and are half days allowed? Entitlements are from the client's rules.
   leave: { annualDays: 15, annualDaysLongService: 21, longServiceYears: 5, annualDaysSenior: 25, sickDays: 25 },
+  payslipShowAllLines: true,
 };
 
 /** Older saved settings may lack newer fields. Fill the gaps from the defaults. */

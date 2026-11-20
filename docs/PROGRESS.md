@@ -44,7 +44,10 @@ Supabase project region is eu-west-1 (Ireland). Hosting must be UK/EU. See the d
   Client line order, statutory lines always shown, transfers as one line with the commission shown on screen, employer pension
   as a separate contribution line, a DRAFT notice until the run is finalised. Download PDF, Print, and a stubbed
   "Resend email" (audit entry, nothing sent). Employees with no email get a "download and hand out" message.
+  Payslips list every deduction line even at 0.00, like the client's paper payslip (setting `payslipShowAllLines`, on by default; turn it off in Settings to show only lines that apply).
   The Tristan da Cunha coat of arms is on the payslip, the PDF, the header and the tab icon (`apps/web/public/logo.png`; the PDF uses a copy embedded in `apps/web/lib/logo.ts`, so replace both if the logo changes). Tax-year-to-date figures are not included.
+- Payment summary and receipt slips (`/payroll/<run>/payments`): a printable list of net pay per employee, or one receipt slip each in the paper format
+  (Name, Date, "No.1 Telecommunications", Signature line, Total). Signature on or off. Linked from the run page.
 - Demo history: two finalised runs (Government 19 Oct, Expats 20 Oct) generated with the engine. The 16 Nov Government run
   compares against the October one (flags one salary change and one new starter).
 - Tax & Deduction Settings (`/settings`): every change is a new version with an effective date and a reason. A run uses the version in force
@@ -78,11 +81,10 @@ Supabase project region is eu-west-1 (Ireland). Hosting must be UK/EU. See the d
 
 1. **Deploy to Vercel** (guide in `docs/DEPLOY.md`).
 2. **Overtime entry** on the review step. The engine supports it. There is no screen to enter hours.
-3. **Payment summary**, printable, with an optional signature column.
-4. **Correction runs.** Today a second run for the same category and pay date is refused, so a finalised mistake cannot yet be corrected.
-5. **Tax-year-to-date** figures on payslips (tax year starts 1 December).
-6. Sidebar layout (the kickoff prompt asked for one; we kept the top header on request).
-7. Move the test scripts into the repo (see below), and run `npm run db:reset` once to confirm it works.
+3. **Correction runs.** Today a second run for the same category and pay date is refused, so a finalised mistake cannot yet be corrected.
+4. **Tax-year-to-date** figures on payslips (tax year starts 1 December).
+5. Sidebar layout (the kickoff prompt asked for one; we kept the top header on request).
+6. Move the test scripts into the repo (see below), and run `npm run db:reset` once to confirm it works.
 
 ## Test tooling is not in the repo
 

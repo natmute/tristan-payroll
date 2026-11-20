@@ -2,7 +2,7 @@ import 'server-only';
 import type { Category, PayslipResult } from '@tristan/payroll-engine';
 import { db } from './supabase';
 import { CATEGORY_LABELS, gbp } from './format';
-import { deductionOrder, pct, type LineRow, type RunRow } from './payroll';
+import { deductionOrder, loadSettings, pct, type LineRow, type RunRow } from './payroll';
 
 // One shape feeds both the on-screen payslip and the PDF, so they can never disagree.
 
@@ -61,14 +61,17 @@ export async function buildPayslip(lineId: string): Promise<PayslipData | null> 
     employee_no: string; first_name: string; last_name: string; email: string | null; job_title: string | null;
     departments: { name: string } | null; pay_grades: { code: string; name: string } | null;
   };
-  const [run, emp, order] = await Promise.all([
+  const [run, emp, order, types, settings] = await Promise.all([
     supabase.from('pay_runs').select('*').eq('id', line.pay_run_id).single<RunRow>(),
     supabase.from('employees').select('employee_no, first_name, last_name, email, job_title, departments(name), pay_grades(code, name)')
       .eq('id', line.employee_id).single<Emp>(),
     deductionOrder(),
+    supabase.from('deduction_types').select('code, label'),
+    loadSettings(), // today's settings: how a payslip looks is presentation, so it follows the current setting
   ]);
   if (run.error) throw new Error(run.error.message);
   if (emp.error) throw new Error(emp.error.message);
+  if (types.error) throw new Error(types.error.message);
   const r: PayslipResult = line.result;
   const category = run.data.category;
 
@@ -79,12 +82,15 @@ export async function buildPayslip(lineId: string): Promise<PayslipData | null> 
   if (r.overtimePay > 0) earnings.push({ code: 'overtime', label: 'Overtime', amount: r.overtimePay });
 
   // Statutory lines first (always shown), then everything the engine produced, in the client's order.
+  // With payslipShowAllLines on, every deduction type is listed too, even at 0.00, like the paper payslip.
+  const labelOf = new Map((types.data ?? []).map((t) => [t.code, t.label as string]));
   const byCode = new Map(r.deductions.map((d) => [d.code, d]));
-  const codes = [...new Set([...ALWAYS_SHOWN[category], ...r.deductions.map((d) => d.code)])]
+  const everyType = settings.payslipShowAllLines ? (types.data ?? []).map((t) => t.code as string).filter((c) => c !== 'transfer_commission') : [];
+  const codes = [...new Set([...ALWAYS_SHOWN[category], ...everyType, ...r.deductions.map((d) => d.code)])]
     .sort((a, b) => order(a) - order(b));
   let deductions: PayslipLine[] = codes.map((code) => {
     const d = byCode.get(code);
-    return { code, label: displayLabel(code, d?.label ?? code), amount: d?.amount ?? 0 };
+    return { code, label: displayLabel(code, d?.label ?? labelOf.get(code) ?? code), amount: d?.amount ?? 0 };
   });
 
   // Transfers: one "Transfers" line (amount plus commission). The screen shows the split.

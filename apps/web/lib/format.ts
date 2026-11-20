@@ -32,6 +32,14 @@ export function signedPct(bps: number): string {
   return `${bps > 0 ? '+' : bps < 0 ? '-' : ''}${Math.floor(abs / 100)}${frac ? '.' + frac : ''}%`;
 }
 
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/** "2026-11-16" -> "November 2026" */
+export function monthYear(iso: string): string {
+  const [y, m] = iso.split('-').map(Number);
+  return `${MONTH_NAMES[m - 1]} ${y}`;
+}
+
 /** "2026-11-16" plus 1 day -> "2026-11-17". Calendar maths in UTC. */
 export function addDays(iso: string, days: number): string {
   const [y, m, d] = iso.split('-').map(Number);

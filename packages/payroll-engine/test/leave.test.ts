@@ -35,6 +35,10 @@ describe('withDefaults', () => {
     const { leave: _omit, ...old } = defaultSettings;
     expect(withDefaults(old).leave).toEqual(defaultSettings.leave);
   });
+  it('older saved settings show every payslip line, like the paper payslip', () => {
+    const { payslipShowAllLines: _omit, ...old } = defaultSettings;
+    expect(withDefaults(old).payslipShowAllLines).toBe(true);
+  });
   it('keeps saved values', () => {
     expect(withDefaults({ ...defaultSettings, transferCommissionBps: 500 }).transferCommissionBps).toBe(500);
   });

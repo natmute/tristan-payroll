@@ -72,7 +72,8 @@ select date '2020-01-01', 'Initial settings', 'Setup', '{
   "deductionsApplyToOvertime": true,
   "transferCommissionBps": 300,
   "netChangeWarningBps": 1000,
-  "leave": {"annualDays":15,"annualDaysLongService":21,"longServiceYears":5,"annualDaysSenior":25,"sickDays":25}
+  "leave": {"annualDays":15,"annualDaysLongService":21,"longServiceYears":5,"annualDaysSenior":25,"sickDays":25},
+  "payslipShowAllLines": true
 }'::jsonb
 where not exists (select 1 from settings_versions);
 

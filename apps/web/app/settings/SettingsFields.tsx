@@ -120,6 +120,15 @@ export function SettingsFields({ s }: { s: PayrollSettings }) {
       </Card>
 
       <Card>
+        <h3 className="mb-3 text-base font-semibold text-primary-900">Payslip</h3>
+        <div className="flex flex-wrap items-center gap-3">
+          <Check name="payslipShowAllLines" label="Show every deduction line on the payslip, even at 0.00 (as on the current paper payslip)" on={s.payslipShowAllLines} />
+          <Confirm />
+        </div>
+        <p className="mt-2 text-xs text-slate-500">Statutory lines are always shown. This changes how payslips look, never an amount.</p>
+      </Card>
+
+      <Card>
         <h3 className="mb-3 text-base font-semibold text-primary-900">Leave</h3>
         <div className="space-y-2 text-sm">
           <div>Annual leave <Num name="leave_annual" label="Annual leave days" value={String(s.leave.annualDays)} suffix="days" /></div>

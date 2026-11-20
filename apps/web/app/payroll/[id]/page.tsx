@@ -161,7 +161,10 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
       </section>
 
       <section className="mt-6" aria-labelledby="lines">
-        <h2 id="lines" className="mb-2 text-lg font-semibold text-primary-900">Payslip lines</h2>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+          <h2 id="lines" className="text-lg font-semibold text-primary-900">Payslip lines</h2>
+          <Link href={`/payroll/${run.id}/payments`} className="text-sm text-primary-700 hover:underline">Payment summary and receipt slips</Link>
+        </div>
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="min-w-full text-sm">
             <thead>
